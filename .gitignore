@@ -13,3 +13,7 @@ _originais/
 
 *.local
 .DS_Store
+
+.vercel
+.env*
+!.env.example
