@@ -3,83 +3,76 @@
 --
 -- Esta é a parte que REALMENTE bloqueia. A tela de login também confere o
 -- domínio, mas só para avisar a pessoa na hora: quem chamar a API do Supabase
--- direto passa por cima da validação do navegador. Quem impede de verdade é o
--- hook abaixo, que roda dentro do Supabase antes de o usuário ser criado.
+-- direto passa por cima da validação do navegador.
 --
 -- COMO APLICAR
 --   1. Supabase → SQL Editor → cole este arquivo inteiro → Run.
 --   2. Supabase → Authentication → Hooks → "Before User Created"
---      → escolha "Postgres" e a função `public.hook_restringir_dominio`
---      → Enable.
+--      → Postgres → função `public.hook_restringir_dominio` → Enable.
 --
--- Para autorizar outro domínio depois, basta um insert:
---   insert into public.dominios_de_cadastro (dominio) values ('outrodominio.com');
--- (e acrescente o mesmo domínio em VITE_DOMINIOS_PERMITIDOS, para a tela
---  avisar antes de enviar em vez de deixar o servidor recusar)
+-- Para autorizar outro domínio: acrescente na lista `dominios` abaixo e rode
+-- o arquivo de novo (o `create or replace` cuida do resto). Acrescente também
+-- em VITE_DOMINIOS_PERMITIDOS, para a tela avisar antes de enviar.
+--
+-- POR QUE NÃO HÁ TABELA DE DOMÍNIOS AQUI
+-- A primeira versão guardava os domínios numa tabela, e o hook quebrava com
+-- "Error running hook URI ... unexpected_failure" — um 500 que travava TODO
+-- cadastro, não só os de domínio errado. Ler uma tabela obriga o papel
+-- `supabase_auth_admin` a ter acesso ao schema, à tabela e a atravessar o RLS
+-- dela; cada um desses é um ponto de falha invisível daqui. Com a lista dentro
+-- da própria função, o hook não depende de mais nada.
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- Lista de domínios liberados. Tabela, e não uma constante dentro da função,
--- para acrescentar um domínio novo sem reescrever a função.
-create table if not exists public.dominios_de_cadastro (
-  dominio text primary key,
-  criado_em timestamptz not null default now()
-);
-
-insert into public.dominios_de_cadastro (dominio)
-values ('esportiva.bet')
-on conflict (dominio) do nothing;
-
--- O hook recebe { "user": { "email": "..." }, ... } e devolve:
---   {}                                  → cadastro liberado
---   { "error": { "message": …, … } }    → cadastro recusado, com a mensagem
 create or replace function public.hook_restringir_dominio(event jsonb)
 returns jsonb
 language plpgsql
-security definer
-set search_path = public
 as $$
 declare
+  -- Domínios autorizados. Sempre em minúsculas.
+  dominios text[] := array['esportiva.bet'];
   email_informado text;
   dominio text;
-  liberado boolean;
 begin
-  email_informado := event -> 'user' ->> 'email';
+  email_informado := lower(coalesce(event -> 'user' ->> 'email', ''));
 
-  -- Sem e-mail no evento não há o que validar (ex.: provedores que não o
-  -- entregam). Recusar aqui bloquearia cadastros legítimos por engano.
-  if email_informado is null or email_informado = '' then
+  -- Sem e-mail no evento não há o que validar. Recusar aqui bloquearia
+  -- cadastros legítimos por engano.
+  if email_informado = '' then
     return '{}'::jsonb;
   end if;
 
-  dominio := lower(split_part(email_informado, '@', 2));
+  dominio := split_part(email_informado, '@', 2);
 
-  select exists (
-    select 1 from public.dominios_de_cadastro d
-    where lower(d.dominio) = dominio
-  ) into liberado;
-
-  if liberado then
-    return '{}'::jsonb;
+  if dominio = any (dominios) then
+    return '{}'::jsonb;   -- liberado
   end if;
 
   return jsonb_build_object(
     'error', jsonb_build_object(
-      'message', 'Cadastro permitido apenas para e-mails corporativos autorizados.',
+      'message', 'Cadastro permitido apenas para e-mails @esportiva.bet.',
+      'http_code', 403
+    )
+  );
+
+exception when others then
+  -- Uma exceção aqui vira HTTP 500 e derruba o cadastro inteiro — inclusive o
+  -- de quem tem o domínio certo. Melhor recusar com uma mensagem legível do
+  -- que deixar a tela de cadastro fora do ar sem ninguém entender por quê.
+  return jsonb_build_object(
+    'error', jsonb_build_object(
+      'message', 'Não foi possível validar o e-mail. Avise o administrador do portal.',
       'http_code', 403
     )
   );
 end;
 $$;
 
--- Só o serviço de autenticação executa o hook. Sem o revoke, qualquer visitante
--- com a chave anon poderia chamar a função pela API — não daria para criar
--- conta com isso, mas revelaria a lista de domínios da empresa.
+-- Só o serviço de autenticação executa o hook. O revoke evita que qualquer
+-- visitante com a chave anon chame a função pela API REST.
 grant usage on schema public to supabase_auth_admin;
+grant execute on function public.hook_restringir_dominio(jsonb) to supabase_auth_admin;
+revoke execute on function public.hook_restringir_dominio(jsonb) from authenticated, anon, public;
 
-grant execute on function public.hook_restringir_dominio to supabase_auth_admin;
-revoke execute on function public.hook_restringir_dominio from authenticated, anon, public;
-
-grant select on table public.dominios_de_cadastro to supabase_auth_admin;
-revoke all on table public.dominios_de_cadastro from authenticated, anon, public;
-
-alter table public.dominios_de_cadastro enable row level security;
+-- A tabela da versão anterior não é mais usada por ninguém. Guardava uma única
+-- linha de configuração ('esportiva.bet'), nenhum dado de usuário.
+drop table if exists public.dominios_de_cadastro;
