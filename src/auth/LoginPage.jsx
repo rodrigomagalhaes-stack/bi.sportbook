@@ -54,7 +54,10 @@ function traduzirErro(mensagem) {
   if (m.includes('signups not allowed') || m.includes('signup is disabled')) {
     return 'O cadastro está desativado no projeto do Supabase. Peça para ligarem "Allow new users to sign up".'
   }
-  if (m.includes('e-mails corporativos autorizados') || m.includes('not allowed')) {
+  // O hook do Supabase já recusa em português ("Cadastro permitido apenas para
+  // e-mails @esportiva.bet."), então essa mensagem passa direto. Este ramo é a
+  // rede de segurança para quando a recusa vier genérica.
+  if (m.includes('not allowed') && !m.includes('signups not allowed')) {
     return listaDominios
       ? `Cadastro permitido apenas para e-mails ${listaDominios}.`
       : 'Este e-mail não tem permissão para se cadastrar.'
