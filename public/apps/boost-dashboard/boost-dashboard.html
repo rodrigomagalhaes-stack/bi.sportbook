@@ -801,7 +801,15 @@ const catOf = b => (isAumento(b) ? 'aumento' : catManual(b));
 // Sportsbook + Tipster — sem Welcome e sem as linhas da campanha de aumento.
 const spbTip = arr => arr.filter(b => BASE_CATS.includes(catOf(b)));
 
-// Preencha com as credenciais públicas do projeto no Supabase.
+// Credenciais públicas do projeto no Supabase.
+//
+// Esta página roda num iframe do portal, na MESMA origem — por isso o cliente
+// abaixo encontra sozinho, no localStorage, a sessão de quem entrou no portal,
+// e assina as consultas como aquele usuário. É disso que o RLS depende: sem a
+// sessão, as requisições chegariam ao Postgres como `anon` e não veriam nada.
+//
+// Servir esta página de outro domínio quebraria isso silenciosamente: a tela
+// carregaria e as tabelas voltariam vazias, sem erro nenhum.
 const SUPABASE_URL = 'https://lfuhmhubafgjqzuueyzw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_vZ4YlAWmHsF5yeDrW3o4Hg_KmaEmfm8';
 const supabaseClient = SUPABASE_URL.includes('SEU-PROJETO') || SUPABASE_ANON_KEY === 'SUA-CHAVE-ANON'
