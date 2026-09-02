@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Processador de PlayerIds</title>
+<link rel="stylesheet" href="/apps/_shared/tema.css">
+<style>
+  :root{
+    /* Cores vindas do tema comum do portal (/apps/_shared/tema.css). Os nomes
+       usados no CSS desta pagina continuam os mesmos — so a origem mudou. */
+    --bg:var(--pb-bg); --card:var(--pb-surface); --card2:var(--pb-surface-2);
+    --line:var(--pb-linha);
+    --txt:var(--pb-t1); --muted:var(--pb-t2);
+    --accent:var(--pb-acc); --accent2:var(--pb-acc-2);
+    --danger:var(--pb-vermelho); --warn:var(--pb-amarelo); --blue:var(--pb-azul);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif}
+  body{background:var(--bg);color:var(--txt);min-height:100vh;padding:32px 16px;display:flex;justify-content:center}
+  .wrap{width:100%;max-width:760px}
+  h1{font-size:24px;font-weight:700;margin-bottom:4px}
+  h2{font-size:17px;font-weight:700;margin-bottom:14px}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:24px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:18px}
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;transition:.15s;background:var(--card2)}
+  .drop:hover,.drop.over{border-color:var(--accent2);background:#1e2a23}
+  .drop .ico{font-size:40px;margin-bottom:10px}
+  .drop .big{font-size:16px;font-weight:600}
+  .drop .sm{color:var(--muted);font-size:13px;margin-top:6px}
+  .file{margin-top:14px;font-size:14px;color:var(--accent2);font-weight:600;word-break:break-all}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:600}
+  input[type=number]{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--txt);
+    border-radius:10px;padding:12px 14px;font-size:18px;font-weight:600}
+  input[type=number]:focus{outline:none;border-color:var(--blue)}
+  .row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+  .row>div{flex:1;min-width:160px}
+  button{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:13px 22px;
+    font-size:15px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap}
+  button:hover{background:var(--accent2)}
+  button:disabled{background:#30363d;color:var(--muted);cursor:not-allowed}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:4px}
+  .stat{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .stat .n{font-size:26px;font-weight:800}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:2px}
+  .stat.ok .n{color:var(--accent2)} .stat.red .n{color:var(--danger)} .stat.warn .n{color:var(--warn)}
+  .hidden{display:none}
+  .download{background:var(--blue);margin-top:18px;width:100%}
+  .download:hover{background:#58a6ff}
+  .err{color:var(--danger);font-size:14px;margin-top:12px}
+  .foot{color:var(--muted);font-size:12px;text-align:center;margin-top:8px;line-height:1.6}
+  .pill{display:inline-block;background:var(--card2);border:1px solid var(--line);border-radius:20px;
+    padding:3px 11px;font-size:12px;color:var(--muted);margin:2px}
+  /* evento / pagamento */
+  .evt{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+  .evtName{font-size:14px;color:var(--muted);margin-bottom:10px}
+  .evtName b{color:var(--txt)}
+  .badge{display:inline-block;border-radius:8px;padding:4px 12px;font-size:13px;font-weight:700;margin-left:6px}
+  .badge.pago{background:#132e1a;color:var(--accent2);border:1px solid #1f5130}
+  .payBtn{background:var(--warn);width:100%}
+  .payBtn:hover{background:#e3b341}
+  .msg{font-size:13px;margin-top:10px}
+  .msg.ok{color:var(--accent2)} .msg.warn{color:var(--warn)} .msg.err{color:var(--danger)}
+  /* historico */
+  .hist .item{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:8px}
+  .hist .item .nm{font-size:14px;font-weight:600;word-break:break-word}
+  .hist .item .meta{font-size:12px;color:var(--muted);margin-top:2px}
+  .hist .item .rm{background:transparent;border:1px solid var(--line);color:var(--muted);
+    padding:6px 10px;font-size:12px;font-weight:600;border-radius:8px;flex-shrink:0}
+  .hist .item .rm:hover{border-color:var(--danger);color:var(--danger);background:transparent}
+  .hist .empty{color:var(--muted);font-size:13px}
+  /* ── ajustes do tema claro ──────────────────────────────────────────────
+     Onde o verde era semantico (sucesso / evento pago) ele continua verde; o
+     laranja ficou so para a acao primaria, como no resto do portal. */
+  .drop:hover,.drop.over{border-color:var(--pb-acc);background:var(--pb-acc-soft)}
+  .file{color:var(--pb-verde)}
+  .stat.ok .n{color:var(--pb-verde)}
+  .msg.ok{color:var(--pb-verde)}
+  .badge.pago{background:var(--pb-verde-soft);color:var(--pb-verde);border:1px solid #bfe5cf}
+  button:disabled{background:var(--pb-surface-3);color:var(--pb-t3)}
+  .download:hover{background:#1d4ed8}
+  .payBtn:hover{background:#96620a}
+  .card{box-shadow:var(--pb-sombra)}
+  .sub{margin-top:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="sub">Sobe o CSV, escolhe o valor mínimo, baixa o .csv pronto e marca o evento como pago.</div>
+
+  <div class="card">
+    <div id="drop" class="drop">
+      <div class="ico">📂</div>
+      <div class="big">Arraste o CSV aqui ou clique para escolher</div>
+      <div class="sm">Aceita separador , ; ou TAB — colunas user_id/jogador e valor_apostado/stake</div>
+      <div id="fileName" class="file hidden"></div>
+    </div>
+    <input type="file" id="fileInput" accept=".csv" class="hidden">
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>VALOR MÍNIMO APOSTADO — soma das apostas do jogador (20 + 10 = 30 entra)</label>
+        <input type="number" id="minVal" value="30" min="0" step="1">
+      </div>
+      <button id="processBtn" disabled>Processar ▶</button>
+    </div>
+    <div id="errBox" class="err hidden"></div>
+  </div>
+
+  <div id="result" class="card hidden">
+    <div class="stats">
+      <div class="stat"><div class="n" id="sTotal">0</div><div class="l">Linhas no CSV</div></div>
+      <div class="stat red"><div class="n" id="sCash">0</div><div class="l">Removidas (cashout)</div></div>
+      <div class="stat"><div class="n" id="sJog">0</div><div class="l">Jogadores únicos</div></div>
+      <div class="stat warn"><div class="n" id="sRep">0</div><div class="l">Jogadores repetidos</div></div>
+      <div class="stat warn"><div class="n" id="sVal">0</div><div class="l">Abaixo do mínimo</div></div>
+      <div class="stat ok"><div class="n" id="sFinal">0</div><div class="l">PlayerIds finais</div></div>
+    </div>
+    <button id="downloadBtn" class="download">⬇ Baixar planilha .csv</button>
+  </div>
+
+  <div class="foot">
+    Regras aplicadas:
+    <span class="pill">exclui cashout</span>
+    <span class="pill">soma das apostas do jogador ≥ mínimo</span>
+    <span class="pill">id do jogador → esportivabetbr_&lt;id&gt;</span>
+    <span class="pill">remove duplicados</span>
+    <br>Saída: coluna <b>PlayerId</b> (preenchida) + <b>Amount</b> (vazia). O processamento roda 100% no seu navegador.
+  </div>
+</div>
+
+<script>
+const PREFIXO = "esportivabetbr_";
+
+let csvText = null, baseName = "resultado", lastIds = [];
+
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('fileInput');
+const fileName = document.getElementById('fileName');
+const processBtn = document.getElementById('processBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const errBox = document.getElementById('errBox');
+const result = document.getElementById('result');
+
+drop.onclick = () => fileInput.click();
+['dragover','dragenter'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop', ev=>{ if(ev.dataTransfer.files.length) loadFile(ev.dataTransfer.files[0]); });
+fileInput.onchange = () => { if(fileInput.files.length) loadFile(fileInput.files[0]); };
+
+function loadFile(file){
+  if(!file.name.toLowerCase().endsWith('.csv')){ showErr('Selecione um arquivo .csv'); return; }
+  baseName = file.name.replace(/\.csv$/i,'');
+  const reader = new FileReader();
+  reader.onload = e => {
+    csvText = e.target.result;
+    fileName.textContent = '✓ ' + file.name;
+    fileName.classList.remove('hidden');
+    processBtn.disabled = false;
+    errBox.classList.add('hidden');
+    result.classList.add('hidden');
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function showErr(msg){ errBox.textContent = '⚠ ' + msg; errBox.classList.remove('hidden'); }
+
+function detectarSeparador(text){
+  const nl = text.indexOf('\n');
+  const linha = nl >= 0 ? text.slice(0, nl) : text;
+  let melhor = ',', maior = -1;
+  for(const sep of [',', ';', '\t']){
+    let n = 0, inQ = false;
+    for(let i=0;i<linha.length;i++){
+      const c = linha[i];
+      if(c === '"') inQ = !inQ;
+      else if(c === sep && !inQ) n++;
+    }
+    if(n > maior){ maior = n; melhor = sep; }
+  }
+  return melhor;
+}
+
+function parseCSV(text){
+  if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);   // remove BOM do Excel
+  const sep = detectarSeparador(text);                      // aceita  ,  ;  ou TAB
+  const rows = []; let row = [], field = '', inQ = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQ){
+      if(c === '"'){ if(text[i+1] === '"'){ field+='"'; i++; } else inQ=false; }
+      else field += c;
+    } else {
+      if(c === '"') inQ = true;
+      else if(c === sep) { row.push(field); field=''; }
+      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else if(c === '\r'){ /* ignora */ }
+      else field += c;
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.length>1 || (r.length===1 && r[0].trim()!==''));
+}
+
+// Nomes aceitos para cada coluna (mudam conforme a origem do relatorio)
+const COLS = {
+  user:      ['user_id','jogador','player_id','playerid','id_jogador','customer_id'],
+  valor:     ['valor_apostado','stake','valor','valor_aposta','amount'],
+  settle:    ['settlement_type'],
+  cashout:   ['alternar_cashout'],
+  resultado: ['resultado','status','resultado_aposta']
+};
+
+// "50" | "50,00" | "R$ 1.234,56"  ->  numero
+function parseValor(txt){
+  let t = (txt||'').trim().replace(/^"|"$/g,'').replace(/[R$\s]/g,'');
+  if(t === '') return NaN;
+  if(t.indexOf(',') >= 0 && t.indexOf('.') >= 0) t = t.replace(/\./g,'').replace(',','.');
+  else t = t.replace(',','.');
+  return parseFloat(t);
+}
+
+// A linha deve ser descartada por cashout / aposta anulada?
+function ehCashout(settlement, cashFlag, resultado){
+  if(settlement.toLowerCase() === 'alternar_cashout') return true;
+  if(cashFlag.toLowerCase() === 'true') return true;
+  const r = resultado.toUpperCase();
+  return r.indexOf('ANULADO') >= 0 || r.indexOf('CASHOUT') >= 0 || r.indexOf('VOID') >= 0;
+}
+
+processBtn.onclick = () => {
+  errBox.classList.add('hidden');
+  const minVal = parseFloat(document.getElementById('minVal').value);
+  if(isNaN(minVal)){ showErr('Informe um valor mínimo válido.'); return; }
+  if(!csvText){ showErr('Carregue um CSV primeiro.'); return; }
+
+  const rows = parseCSV(csvText);
+  if(rows.length < 2){ showErr('CSV vazio ou sem dados.'); return; }
+
+  const headerOriginal = rows[0].map(h => h.trim().replace(/^"|"$/g,'').replace(/^\uFEFF/,''));
+  const header = headerOriginal.map(h => h.toLowerCase());
+  const findCol = nomes => {
+    for(const n of nomes){ const i = header.indexOf(n); if(i >= 0) return i; }
+    return -1;
+  };
+  const iUser = findCol(COLS.user), iVal = findCol(COLS.valor),
+        iSet = findCol(COLS.settle), iCash = findCol(COLS.cashout),
+        iRes = findCol(COLS.resultado);
+
+  if(iUser < 0 || iVal < 0){
+    showErr('Não encontrei a coluna de ID do jogador e/ou a de valor apostado. Colunas lidas: ' + headerOriginal.join(', ')); return;
+  }
+
+  let total=0, cash=0, semId=0;
+  const soma = new Map();    // pid -> total apostado pelo jogador
+  const vezes = new Map();   // pid -> quantas apostas validas ele tem
+  const ordem = [];          // ordem de aparicao
+
+  for(let r=1;r<rows.length;r++){
+    const row = rows[r]; total++;
+    const settlement = iSet>=0 ? (row[iSet]||'').trim() : '';
+    const cashFlag = iCash>=0 ? (row[iCash]||'').trim() : '';
+    const resultado = iRes>=0 ? (row[iRes]||'').trim() : '';
+    if(ehCashout(settlement, cashFlag, resultado)){ cash++; continue; }
+
+    const uid = (row[iUser]||'').trim();
+    if(uid === ''){ semId++; continue; }
+    const pid = PREFIXO + uid;
+
+    const v = parseValor(row[iVal]);
+    if(!soma.has(pid)){ soma.set(pid, 0); vezes.set(pid, 0); ordem.push(pid); }
+    soma.set(pid, soma.get(pid) + (isNaN(v) ? 0 : v));
+    vezes.set(pid, vezes.get(pid) + 1);
+  }
+
+  // o jogador entra quando a SOMA das apostas dele alcanca o minimo (ex: 20 + 10 = 30)
+  const totalDe = pid => Math.round(soma.get(pid) * 100) / 100;
+  const aprovados = ordem.filter(pid => totalDe(pid) >= minVal);
+  const repetidos = ordem.filter(pid => vezes.get(pid) > 1).length;
+
+  lastIds = aprovados;
+  document.getElementById('sTotal').textContent = total;
+  document.getElementById('sCash').textContent = cash;
+  document.getElementById('sJog').textContent = ordem.length;
+  document.getElementById('sRep').textContent = repetidos;
+  document.getElementById('sVal').textContent = ordem.length - aprovados.length;
+  document.getElementById('sFinal').textContent = aprovados.length;
+  result.classList.remove('hidden');
+};
+
+downloadBtn.onclick = () => {
+  if(!lastIds.length){ return; }
+  let csv = 'PlayerId,Amount\r\n';
+  lastIds.forEach(pid => { csv += pid + ',\r\n'; });
+  const blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = baseName + '_PROCESSADO.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+</script>
+</body>
+</html>

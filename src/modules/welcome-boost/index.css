@@ -1,0 +1,236 @@
+/* Cores e tipografia vindas da paleta única do portal (src/shell/shell.css).
+   Os nomes usados nas regras e nos estilos inline de styles.js continuam os
+   mesmos do projeto original — só a origem mudou. Isso trocou o bege quente
+   pelo branco do portal e a fonte Archivo pela do resto do sistema, sem tocar
+   em nenhuma regra de layout. */
+
+:root {
+  /* superfícies */
+  --bg: var(--pb-bg);
+  --surface: var(--pb-surface);
+  --surface-2: var(--pb-surface-2);
+  --line: var(--pb-linha);
+  --line-2: var(--pb-linha-2);
+
+  /* texto — 3 níveis */
+  --t1: var(--pb-t1);
+  --t2: var(--pb-t2);
+  --t3: var(--pb-t3);
+
+  /* marca */
+  --acc: var(--pb-acc);
+  --acc-press: var(--pb-acc-2);
+  --acc-soft: var(--pb-acc-soft);
+  --acc-line: var(--pb-acc-linha);
+
+  /* semânticas */
+  --up: var(--pb-verde);      --up-soft: var(--pb-verde-soft);
+  --down: var(--pb-vermelho); --down-soft: var(--pb-vermelho-soft);
+  --info: var(--pb-azul);     --info-soft: var(--pb-azul-soft);
+  --warn: var(--pb-amarelo);  --warn-soft: var(--pb-amarelo-soft);
+
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
+  --shadow: var(--pb-sombra);
+
+  --font: var(--pb-font);
+  --mono: var(--pb-mono);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); font-family: var(--font); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.5);
+}
+
+/* ─── RESPONSIVE OVERRIDES ───────────────────────────────────────────── */
+
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table-wrap table {
+  min-width: 540px;
+}
+
+@media (max-width: 880px) {
+  .app-shell {
+    flex-direction: column;
+  }
+  .app-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    position: relative !important;
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 14px 16px !important;
+  }
+  .app-sidebar > div:first-child {
+    margin-bottom: 0 !important;
+    margin-right: auto;
+  }
+  .app-content {
+    padding: 22px 16px 50px !important;
+  }
+}
+
+/* ─── Resumo Mensal ─────────────────────────────────────────────────── */
+
+/* setas + seletor de mês em uma linha só, mesmo com a .filter-bar empilhando no mobile */
+.month-nav > input[type="month"] { min-width: 0; }
+
+/* 8 colunas: abaixo disso a coluna "Confronto" fica espremida — melhor rolar
+   na horizontal dentro do card (o .table-wrap já tem overflow-x auto). */
+.table-wrap table.month-table { min-width: 860px; }
+
+/* a caixa do mês tem 4 indicadores: 4 / 2 / 1 coluna, nunca sobra célula vazia */
+@media (max-width: 900px) {
+  .month-box-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+@media (max-width: 720px) {
+  .month-nav {
+    width: 100% !important;
+    flex-wrap: wrap;
+  }
+  .month-nav > input[type="month"] {
+    flex: 1 1 120px;
+    width: auto !important;
+  }
+  /* os chips de mês rolam na horizontal em vez de esticar a página */
+  .month-chips {
+    width: 100%;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .month-box-grid > div { padding: 18px 16px !important; }
+}
+
+/* uma coluna só quando dois valores em reais não cabem lado a lado */
+@media (max-width: 560px) {
+  .month-box-grid { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+/* os indicadores de apoio são números curtos (2, 4/5, R$ 25,72): cabem dois por
+   linha mesmo em telas estreitas. Vem depois da regra genérica de .stats-grid
+   para vencer o !important dela. */
+@media (max-width: 420px) {
+  .stats-grid.month-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+@media (max-width: 720px) {
+  .app-main {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 16px;
+    padding-top: 22px !important;
+    padding-bottom: 24px !important;
+  }
+  .app-header .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .app-tabs {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  .filter-bar > * {
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .app-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .card-header {
+    flex-wrap: wrap;
+  }
+
+  .matchup {
+    width: 100%;
+  }
+
+  .confronto {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: break-word;
+  }
+
+  .meta-row {
+    gap: 10px 16px !important;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .form-group-full,
+  .form-grid > * {
+    grid-column: 1 / -1 !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .report-box-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .modal {
+    max-width: 100% !important;
+    border-radius: 16px !important;
+  }
+  .modal-header {
+    padding: 20px 18px 0 !important;
+  }
+  .modal-body {
+    padding: 18px !important;
+  }
+
+  .report-header {
+    flex-wrap: wrap;
+    gap: 10px !important;
+    padding: 16px 20px !important;
+  }
+
+  .report-content {
+    padding: 24px 16px !important;
+  }
+
+  .report-title {
+    font-size: 22px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .stats-grid,
+  .report-box-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .avatar-circle {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 11px !important;
+  }
+}

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Risco — Boost</title>
+<link rel="stylesheet" href="/apps/_shared/tema.css">
+<style>
+  :root{
+    /* Cores vindas do tema comum do portal (/apps/_shared/tema.css). Os nomes
+       usados no CSS desta pagina continuam os mesmos — so a origem mudou. */
+    --orange:var(--pb-acc);
+    --orange-dark:var(--pb-acc-2);
+    --orange-soft:var(--pb-acc-soft);
+    --ink:var(--pb-t1);
+    --gray:var(--pb-t2);
+    --line:var(--pb-linha);
+    --bg:var(--pb-bg);
+    --white:var(--pb-surface);
+    --green:var(--pb-verde);
+    --green-soft:var(--pb-verde-soft);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    color:var(--ink);
+  }
+  .wrap{
+    max-width:1040px;
+    margin:0 auto;
+    padding:28px 20px 60px;
+  }
+  header{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    margin-bottom:22px;
+  }
+  .mark{
+    width:40px;height:40px;border-radius:10px;
+    background:var(--orange);
+    display:flex;align-items:center;justify-content:center;
+    color:white;font-weight:800;font-size:18px;
+    flex-shrink:0;
+  }
+  h1{
+    font-size:19px;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .sub{
+    font-size:13px;
+    color:var(--gray);
+    margin-top:2px;
+  }
+
+  .panel{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px;
+    margin-bottom:20px;
+  }
+
+  .controls{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  @media (max-width:560px){ .controls{grid-template-columns:1fr;} }
+
+  label{
+    display:block;
+    font-size:12px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--gray);
+    margin-bottom:6px;
+  }
+  input[type=number]{
+    width:100%;
+    padding:11px 12px;
+    border:1.5px solid var(--line);
+    border-radius:9px;
+    font-size:16px;
+    font-weight:600;
+    color:var(--ink);
+    background:var(--bg);
+    transition:border-color .15s;
+  }
+  input[type=number]:focus{
+    outline:none;
+    border-color:var(--orange);
+    background:var(--white);
+  }
+
+  .formula{
+    margin-top:16px;
+    padding:12px 14px;
+    background:var(--orange-soft);
+    border-radius:9px;
+    font-size:13px;
+    color:var(--orange-dark);
+    font-weight:600;
+  }
+  .formula code{
+    font-family:'SF Mono',Consolas,monospace;
+    font-weight:700;
+  }
+
+  .toolbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin-bottom:10px;
+    flex-wrap:wrap;
+  }
+  .toolbar input[type=text]{
+    padding:9px 12px;
+    border:1.5px solid var(--line);
+    border-radius:9px;
+    font-size:14px;
+    width:180px;
+  }
+  .toolbar input[type=text]:focus{ outline:none; border-color:var(--orange); }
+  .count{
+    font-size:12px;
+    color:var(--gray);
+  }
+
+  .table-scroll{
+    max-height:560px;
+    overflow-y:auto;
+    border:1px solid var(--line);
+    border-radius:12px;
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13.5px;
+  }
+  thead th{
+    position:sticky;
+    top:0;
+    background:var(--ink);
+    color:white;
+    text-align:right;
+    padding:11px 14px;
+    font-weight:600;
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    cursor:pointer;
+    user-select:none;
+    white-space:nowrap;
+  }
+  thead th:first-child{ text-align:left; }
+  thead th:hover{ background:var(--pb-t1); }
+  thead th .arrow{ opacity:.5; font-size:10px; margin-left:4px; }
+  tbody td{
+    padding:9px 14px;
+    text-align:right;
+    border-bottom:1px solid var(--line);
+    font-variant-numeric:tabular-nums;
+  }
+  tbody td:first-child{
+    text-align:left;
+    font-weight:700;
+  }
+  tbody tr:hover{ background:var(--bg); }
+  tbody tr.exact{ background:var(--green-soft); }
+  tbody tr.exact:hover{ background:var(--pb-verde-soft); }
+  .badge{
+    display:inline-block;
+    font-size:10px;
+    font-weight:700;
+    color:var(--green);
+    background:white;
+    border:1px solid var(--green);
+    border-radius:5px;
+    padding:1px 6px;
+    margin-left:6px;
+    vertical-align:middle;
+  }
+  .diff-pos{ color:var(--gray); }
+  .diff-neg{ color:var(--gray); }
+  footer{
+    text-align:center;
+    font-size:11.5px;
+    color:var(--gray);
+    margin-top:18px;
+  }
+  /* ── ajustes do tema do portal ── */
+  .wrap{ padding-top:22px; }
+  .panel{ box-shadow:var(--pb-sombra); }
+
+  /* Cabecalho de tabela clara, como no Boost Dashboard e no Monitor — era o
+     unico bloco preto sobrando no portal inteiro. */
+  thead th{
+    background:var(--pb-surface-2);
+    color:var(--pb-t2);
+    border-bottom:1px solid var(--pb-linha);
+  }
+  thead th:hover{ background:var(--pb-surface-3); color:var(--pb-t1); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="sub">Stake × Bilhetes × Odd = Risco</div>
+  </header>
+
+  <div class="panel">
+    <div class="controls">
+      <div>
+        <label for="odd">Odd boostada</label>
+        <input type="number" id="odd" step="0.01" min="1.01" value="1.50">
+      </div>
+      <div>
+        <label for="risco">Risco alvo (R$)</label>
+        <input type="number" id="risco" step="1000" min="1000" value="150000">
+      </div>
+    </div>
+    <div class="formula">
+      Bilhetes = Risco ÷ (Stake × Odd) &nbsp;·&nbsp; <code id="formulaOdd">Odd = 1.50</code> &nbsp;·&nbsp; <code id="formulaRisco">Risco = R$ 150.000</code>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input type="text" id="filter" placeholder="Filtrar stake... ex: 100">
+    <div class="count" id="count"></div>
+  </div>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th data-key="stake">Stake (R$)<span class="arrow">↕</span></th>
+          <th data-key="exato">Bilhetes exato<span class="arrow">↕</span></th>
+          <th data-key="arred">Bilhetes (arred.)<span class="arrow">↕</span></th>
+          <th data-key="riscoReal">Risco real (R$)<span class="arrow">↕</span></th>
+          <th data-key="dif">Diferença<span class="arrow">↕</span></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <footer>Stakes disponíveis: R$ 15, 20, 25, 30, 40, 50, 70, 100, 200, 300</footer>
+</div>
+
+<script>
+const oddInput = document.getElementById('odd');
+const riscoInput = document.getElementById('risco');
+const filterInput = document.getElementById('filter');
+const tbody = document.getElementById('tbody');
+const countEl = document.getElementById('count');
+const formulaOdd = document.getElementById('formulaOdd');
+const formulaRisco = document.getElementById('formulaRisco');
+
+let sortKey = 'stake';
+let sortDir = 1;
+let rows = [];
+
+function fmtBRL(n){
+  return n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmtInt(n){
+  return n.toLocaleString('pt-BR');
+}
+
+function compute(){
+  const odd = parseFloat(oddInput.value);
+  const riscoAlvo = parseFloat(riscoInput.value);
+  rows = [];
+
+  if (!odd || odd <= 1 || !riscoAlvo || riscoAlvo <= 0){
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:20px;">Preencha odd e risco válidos</td></tr>';
+    countEl.textContent = '';
+    return;
+  }
+
+  formulaOdd.textContent = 'Odd = ' + odd.toFixed(2);
+  formulaRisco.textContent = 'Risco = R$ ' + fmtInt(riscoAlvo);
+
+  const STAKES = [15, 20, 25, 30, 40, 50, 70, 100, 200, 300];
+
+  for (const stake of STAKES){
+    const exato = riscoAlvo / (stake * odd);
+    const arred = Math.round(exato);
+    const riscoReal = arred * stake * odd;
+    const dif = riscoReal - riscoAlvo;
+    const isExact = Math.abs(exato - arred) < 0.005;
+    rows.push({stake, exato, arred, riscoReal, dif, isExact});
+  }
+
+  render();
+}
+
+function render(){
+  let filtered = rows;
+  const filterVal = filterInput.value.trim();
+  if (filterVal){
+    filtered = rows.filter(r => String(r.stake).includes(filterVal));
+  }
+
+  const sorted = [...filtered].sort((a,b) => (a[sortKey]-b[sortKey]) * sortDir);
+
+  tbody.innerHTML = sorted.map(r => `
+    <tr class="${r.isExact ? 'exact' : ''}">
+      <td>R$ ${fmtInt(r.stake)}</td>
+      <td>${fmtBRL(r.exato)}</td>
+      <td>${fmtInt(r.arred)}${r.isExact ? '<span class="badge">exato</span>' : ''}</td>
+      <td>R$ ${fmtBRL(r.riscoReal)}</td>
+      <td class="${r.dif >= 0 ? 'diff-pos' : 'diff-neg'}">${r.dif >= 0 ? '+' : ''}R$ ${fmtBRL(r.dif)}</td>
+    </tr>
+  `).join('');
+
+  countEl.textContent = filtered.length + ' de ' + rows.length + ' stakes';
+}
+
+document.querySelectorAll('thead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if (sortKey === key){ sortDir *= -1; } else { sortKey = key; sortDir = 1; }
+    render();
+  });
+});
+
+oddInput.addEventListener('input', compute);
+riscoInput.addEventListener('input', compute);
+filterInput.addEventListener('input', render);
+
+compute();
+</script>
+</body>
+</html>

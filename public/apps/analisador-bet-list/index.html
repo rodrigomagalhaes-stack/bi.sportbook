@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bet List · Analisador — EsportivaBet</title>
+<script src="xlsx.full.min.js"></script>
+<script>/* fallback: se a cópia local não estiver junto do HTML, usa o CDN */
+if (typeof XLSX === "undefined")
+  document.write('<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"><\/script>');</script>
+<link rel="stylesheet" href="/apps/_shared/tema.css">
+<style>
+  :root{
+    /* Cores vindas do tema comum do portal (/apps/_shared/tema.css). Os nomes
+       usados no CSS desta pagina continuam os mesmos — so a origem mudou.
+       O alternador claro/escuro saiu junto com o tema escuro: o portal inteiro
+       e claro, e uma tela sozinha em preto quebrava a uniformidade. */
+    --bg:var(--pb-bg); --bg2:var(--pb-surface); --panel:var(--pb-surface); --panel2:var(--pb-surface-2);
+    --line:var(--pb-linha); --line2:var(--pb-linha-2);
+    --txt:var(--pb-t1); --txt2:var(--pb-t2); --txt3:var(--pb-t3);
+    --acc:var(--pb-acc); --acc-dim:var(--pb-acc-2); --acc-bg:var(--pb-acc-soft);
+    --ok:var(--pb-verde); --bad:var(--pb-vermelho); --warn:var(--pb-amarelo);
+    --mono:var(--pb-mono);
+    --sans:var(--pb-font);
+  }
+  .mkt.sel .name{color:var(--acc-dim)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--txt);font:13px/1.45 var(--sans);-webkit-font-smoothing:antialiased}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--pb-linha-2);border-radius:5px;border:2px solid var(--bg)}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  /* ---------- topbar ---------- */
+  #topbar{display:none;align-items:center;gap:14px;height:46px;padding:0 16px;
+    background:var(--bg2);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
+  #topbar .brand{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+  #topbar .brand b{font-size:14px;letter-spacing:.2px}
+  #topbar .brand .tag{color:var(--acc);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+  #fileinfo{color:var(--txt2);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  #fileinfo code{font-family:var(--mono);color:var(--txt)}
+  .btn{background:var(--panel2);border:1px solid var(--line2);color:var(--txt);border-radius:6px;
+    padding:5px 12px;font:600 12px var(--sans);cursor:pointer;white-space:nowrap}
+  .btn:hover{border-color:var(--acc);color:var(--acc)}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+  .btn.primary:hover{background:var(--acc-dim);color:#fff}
+  .local-badge{font-size:10.5px;color:var(--txt3);border:1px solid var(--line);border-radius:20px;
+    padding:2px 9px;white-space:nowrap}
+  .local-badge::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--ok);margin-right:6px;vertical-align:1px}
+
+  /* ---------- upload ---------- */
+  #upload-screen{display:flex;align-items:center;justify-content:center;height:100vh}
+  #dropzone{width:520px;max-width:90vw;background:var(--pb-surface);box-shadow:var(--pb-sombra);border:1.5px dashed var(--line2);border-radius:14px;
+    padding:56px 40px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+  #dropzone:hover,#dropzone.over{border-color:var(--acc);background:var(--acc-bg)}
+  #dropzone .dz-ico{color:var(--txt3);margin-bottom:14px}
+  #dropzone h2{font-size:17px;margin-bottom:8px}
+  #dropzone p{color:var(--txt2);font-size:12.5px;margin-bottom:4px}
+  #dropzone .fmt{font-family:var(--mono);color:var(--txt3);font-size:11px;margin-top:14px}
+  #dropzone .err{color:var(--bad);font-size:12px;margin-top:12px;display:none}
+
+  /* ---------- app layout ---------- */
+  #app{display:none;height:calc(100vh - 46px)}
+  #app.on{display:grid;grid-template-columns:300px 1fr}
+
+  /* sidebar */
+  #side{background:var(--bg2);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  #side .side-head{padding:12px 14px 8px}
+  #side .side-head .lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--txt3)}
+  #mkt-search{width:100%;margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    color:var(--txt);padding:6px 10px;font:12px var(--sans);outline:none}
+  #mkt-search:focus{border-color:var(--acc)}
+  #mkt-list{flex:1;overflow-y:auto;padding:4px 8px 14px}
+  .mkt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;
+    border:1px solid transparent;margin-bottom:1px}
+  .mkt:hover{background:var(--panel)}
+  .mkt.sel{background:var(--acc-bg);border-color:rgba(255,58,0,.35)}
+  .mkt .name{flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mkt.sel .name{color:#ffb39e}
+  .mkt .cnt{font-family:var(--mono);font-size:10.5px;color:var(--txt2);background:var(--panel2);
+    border-radius:10px;padding:1px 7px;flex:none}
+  .mkt.all{margin-bottom:6px}
+  .mkt.all .name{font-weight:700}
+  #mkt-foot{padding:8px 14px;border-top:1px solid var(--line);color:var(--txt3);font-size:11px}
+
+  /* main */
+  #main{overflow-y:auto;min-height:0;padding:18px 22px 60px}
+  .mkt-title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+  .mkt-title h1{font-size:17px;font-weight:700}
+  .mkt-title .sub{color:var(--txt2);font-size:12px}
+  .note{color:var(--txt3);font-size:11.5px;max-width:880px;margin-bottom:16px}
+
+  /* KPIs */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;
+    background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:10px}
+  .kpi{background:var(--panel);padding:10px 14px 12px}
+  .kpi .k{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);margin-bottom:5px}
+  .kpi .v{font-family:var(--mono);font-size:17px;font-weight:600;letter-spacing:-.3px}
+  .kpi .v.money::before{content:"R$ ";font-size:11px;color:var(--txt3);font-weight:400}
+  .kpi.hl .v{color:var(--acc)}
+  .kpi .v.neg{color:var(--bad)}
+  .kpis.bonus .kpi{background:var(--bg2)}
+  .kpis.bonus .kpi .v{font-size:14px;color:var(--txt2)}
+  .kpis.bonus{margin-bottom:16px}
+
+  .ok{color:var(--ok)} .bad{color:var(--bad)}
+
+  /* sections */
+  section{margin-top:26px}
+  .sec-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px;
+    padding-bottom:7px;border-bottom:1px solid var(--line)}
+  .sec-head h2{font-size:13.5px;font-weight:700}
+  .sec-head h2 .num{color:var(--acc);font-family:var(--mono);margin-right:6px}
+  .sec-head .spacer{flex:1}
+  .sec-head .btn.sm{padding:3px 10px;font-size:11px}
+  .ctl{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--txt2)}
+  .ctl input[type=number]{width:54px;background:var(--panel);border:1px solid var(--line2);border-radius:5px;
+    color:var(--txt);padding:3px 7px;font:600 12px var(--mono);outline:none;text-align:center}
+  .ctl input[type=number]:focus{border-color:var(--acc)}
+  .switch{display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
+  .switch input{display:none}
+  .switch .tr{width:30px;height:16px;background:var(--line2);border-radius:9px;position:relative;transition:background .15s}
+  .switch .tr::after{content:"";position:absolute;width:12px;height:12px;border-radius:50%;background:var(--pb-t3);top:2px;left:2px;transition:left .15s,background .15s}
+  .switch input:checked + .tr{background:var(--acc)}
+  .switch input:checked + .tr::after{left:16px;background:#fff}
+  .sum-line{font-size:11.5px;color:var(--txt2);margin-bottom:8px;font-family:var(--mono)}
+  .sum-line b{color:var(--txt)}
+  .empty{color:var(--txt3);font-size:12px;padding:14px 4px;font-style:italic}
+
+  /* data tables */
+  .tbl-wrap{border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:560px}
+  table.dt{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+  table.dt thead th{position:sticky;top:0;background:var(--bg2);z-index:2;text-align:right;
+    padding:7px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+    color:var(--txt3);cursor:pointer;user-select:none;border-bottom:1px solid var(--line2)}
+  table.dt thead th.l{text-align:left}
+  table.dt thead th:hover{color:var(--txt)}
+  table.dt thead th .arr{color:var(--acc);font-size:9px;margin-left:4px}
+  table.dt tbody td{padding:5px 12px;text-align:right;font-family:var(--mono);border-top:1px solid var(--line)}
+  table.dt tbody td.l{text-align:left}
+  table.dt tbody tr:hover td{background:var(--panel2)}
+  table.dt td .neg{color:var(--bad)}
+  table.dt td .pos{color:var(--ok)}
+  .iplist{max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;font-size:11px;color:var(--txt2)}
+  .alert-row td:first-child{box-shadow:inset 3px 0 0 var(--acc)}
+  .more-btn{display:block;width:100%;background:var(--bg2);border:none;border-top:1px solid var(--line);
+    color:var(--acc);font:600 11.5px var(--sans);padding:8px;cursor:pointer}
+  .more-btn:hover{background:var(--panel2)}
+  .badge{display:inline-block;font:700 10px var(--mono);background:var(--acc-bg);color:var(--acc);
+    border:1px solid rgba(255,58,0,.3);border-radius:4px;padding:1px 6px}
+
+  /* mapping panel */
+  details.map{margin-bottom:16px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+  details.map summary{padding:8px 14px;font-size:11px;font-weight:700;text-transform:uppercase;
+    letter-spacing:1px;color:var(--txt2);cursor:pointer;user-select:none;list-style:none}
+  details.map summary::before{content:"▸";color:var(--acc);margin-right:8px;display:inline-block;transition:transform .12s}
+  details.map[open] summary::before{transform:rotate(90deg)}
+  .map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;padding:4px 14px 14px}
+  .map-item{font-size:11.5px;display:flex;gap:6px;align-items:baseline}
+  .map-item .lf{color:var(--txt3);min-width:110px}
+  .map-item .rh{font-family:var(--mono);color:var(--txt)}
+  .map-item .rh.miss{color:var(--bad)}
+  /* ── ajustes do tema claro ── */
+  #topbar{background:var(--pb-surface);border-bottom:1px solid var(--pb-linha)}
+  .card,.panel{box-shadow:var(--pb-sombra)}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div id="fileinfo"></div>
+  <span class="local-badge">processamento 100% local</span>
+  <button class="btn primary" id="btn-export" style="display:none" title="Baixar planilha com os totais por mercado">⬇ Baixar XLSX</button>
+  <button class="btn" id="btn-change" style="display:none">Trocar arquivo</button>
+</div>
+
+<div id="upload-screen">
+  <div id="dropzone">
+    <svg class="dz-ico" viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor"
+         stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M12 3v13"/><path d="m7.5 7.5 4.5-4.5 4.5 4.5"/>
+    </svg>
+    <h2>Solte o relatório Bet List aqui</h2>
+    <p>ou clique para escolher o arquivo</p>
+    <p>Exportado do Altenar · nenhum dado sai desta máquina</p>
+    <div class="fmt">.xlsx&ensp;·&ensp;.xls&ensp;·&ensp;.csv</div>
+    <div class="err" id="up-err"></div>
+  </div>
+  <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none">
+</div>
+
+<div id="app">
+  <aside id="side">
+    <div class="side-head">
+      <div class="lbl">Mercados (Market types)</div>
+      <input id="mkt-search" type="text" placeholder="Buscar mercado…" autocomplete="off">
+    </div>
+    <div id="mkt-list"></div>
+    <div id="mkt-foot"></div>
+  </aside>
+  <div id="main"></div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================== estado ============================== */
+const S = {
+  rows: [],            // linhas parseadas
+  headers: [],         // cabeçalhos reais
+  mapping: {},         // campo lógico -> {idx, header} | null
+  totals: null,        // aba Totals of report (se existir)
+  markets: [],         // [{name, count}]
+  selected: "__ALL__",
+  search: "",
+  N: 2, M: 2, K: 2, reqSec: true,
+  fileName: "",
+  sort: {}             // por tabela: {key, dir}
+};
+
+const fmtN = new Intl.NumberFormat("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const fmtI = new Intl.NumberFormat("pt-BR");
+const money = v => fmtN.format(v);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ============================== parsing ============================== */
+
+// número: real ou string BR ("1.234,56", "R$ 415,50", "5,00")
+function parseNum(v) {
+  if (v == null || v === "") return 0;
+  if (typeof v === "number") return isFinite(v) ? v : 0;
+  let s = String(v).trim();
+  if (!s) return 0;
+  let neg = false;
+  if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+  s = s.replace(/−/g, "-").replace(/[^\d.,\-]/g, "");
+  if (!s) return 0;
+  if (s.includes(".") && s.includes(",")) {
+    s = s.replace(/\./g, "").replace(",", ".");      // . milhar, , decimal
+  } else if (s.includes(",")) {
+    s = s.replace(",", ".");                          // só vírgula → decimal
+  }
+  const n = parseFloat(s);
+  if (!isFinite(n)) return 0;
+  return neg ? -n : n;
+}
+
+// data: string dd/mm/yyyy HH:mm:ss, Date, ou serial Excel → {y,mo,d,h,mi,s}
+function parseDate(v) {
+  if (v == null || v === "") return null;
+  if (v instanceof Date) {
+    if (isNaN(v)) return null;
+    return {y:v.getFullYear(), mo:v.getMonth()+1, d:v.getDate(), h:v.getHours(), mi:v.getMinutes(), s:v.getSeconds()};
+  }
+  if (typeof v === "number") { // serial Excel (sistema 1900)
+    const ms = Math.round((v - 25569) * 86400000);
+    const dt = new Date(ms);
+    return {y:dt.getUTCFullYear(), mo:dt.getUTCMonth()+1, d:dt.getUTCDate(), h:dt.getUTCHours(), mi:dt.getUTCMinutes(), s:dt.getUTCSeconds()};
+  }
+  const str = String(v).trim();
+  let m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) return {y:+m[3], mo:+m[2], d:+m[1], h:+m[4], mi:+m[5], s:+(m[6]||0)};
+  m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) return {y:+m[1], mo:+m[2], d:+m[3], h:+m[4], mi:+m[5], s:+(m[6]||0)};
+  m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return {y:+m[3], mo:+m[2], d:+m[1], h:0, mi:0, s:0};
+  return null;
+}
+const p2 = n => String(n).padStart(2, "0");
+const minuteKey = dt => `${dt.y}-${p2(dt.mo)}-${p2(dt.d)} ${p2(dt.h)}:${p2(dt.mi)}`;
+const dateStr = dt => `${p2(dt.d)}/${p2(dt.mo)}/${dt.y} ${p2(dt.h)}:${p2(dt.mi)}:${p2(dt.s)}`;
+
+// status normalizado → 4 classes (REGRA CENTRAL)
+function classifyStatus(raw) {
+  const s = String(raw == null ? "" : raw).toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (s.includes("reject")) return "rejected";
+  if (s.includes("void")) return "void";                       // VoidCashout é void
+  if (s.includes("open") || s.includes("abert") || s.includes("pend")) return "open";
+  return "settled";
+}
+
+/* ====================== mapeamento de colunas ====================== */
+const normHdr = h => String(h == null ? "" : h).toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const FIELD_DEFS = [
+  {key:"playerId",      label:"Player Id",      cands:["playerid"]},
+  {key:"player",        label:"Player",          cands:["player","playername"]},
+  {key:"clientIp",      label:"Client IP",       cands:["clientip","ipaddress","ip"]},
+  {key:"betDate",       label:"Bet date",        cands:["betdate"]},
+  {key:"marketTypes",   label:"Market types",    cands:["markettypes","markettype"]},
+  {key:"stake",         label:"Stake",           cands:["stake","betstake","totalstake"]},
+  {key:"winnings",      label:"Winnings",        cands:["winnings","betwinnings"]},
+  {key:"status",        label:"Status",          cands:["status","betstatus"]},
+  {key:"bonusStake",    label:"Bonus stake",     cands:["bonusstake"]},
+  {key:"bonusWinnings", label:"Bonus winnings",  cands:["bonuswinnings"]},
+  {key:"currency",      label:"Currency",        cands:["currency"]},
+];
+
+function detectMapping(headerRow) {
+  const normed = headerRow.map(normHdr);
+  const used = new Set();
+  const map = {};
+  for (const f of FIELD_DEFS) {
+    map[f.key] = null;
+    for (const c of f.cands) { // 1º passe: match exato
+      const i = normed.findIndex((h, idx) => h === c && !used.has(idx));
+      if (i >= 0) { map[f.key] = {idx:i, header:String(headerRow[i])}; used.add(i); break; }
+    }
+    if (!map[f.key]) { // 2º passe: contém (campo não-bônus nunca casa com cabeçalho de bônus)
+      const isBonus = f.key.startsWith("bonus");
+      for (const c of f.cands) {
+        const i = normed.findIndex((h, idx) =>
+          h && h.includes(c) && !used.has(idx) && (isBonus || !h.includes("bonus")));
+        if (i >= 0) { map[f.key] = {idx:i, header:String(headerRow[i])}; used.add(i); break; }
+      }
+    }
+  }
+  return map;
+}
+
+/* ===================== leitura do arquivo ===================== */
+function loadWorkbook(buf, name) {
+  // CSV: raw:true mantém células como string — senão o SheetJS lê "10,00" como 1000 (vírgula = milhar US)
+  const isCsv = /\.csv$/i.test(name || "");
+  const wb = XLSX.read(buf, {type:"array", cellDates:true, raw:isCsv});
+  const wsName = wb.SheetNames[0];
+  const ws = wb.Sheets[wsName];
+  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null});
+  if (!aoa.length) throw new Error("A primeira aba está vazia.");
+
+  // localizar a linha de cabeçalho (primeira linha que contenha "Market types" ou "Player Id")
+  let hr = 0;
+  for (let i = 0; i < Math.min(aoa.length, 10); i++) {
+    const ns = (aoa[i] || []).map(normHdr);
+    if (ns.includes("markettypes") || ns.includes("playerid")) { hr = i; break; }
+  }
+  const headers = (aoa[hr] || []).map(h => h == null ? "" : String(h));
+  const mapping = detectMapping(headers);
+
+  const need = ["playerId","marketTypes","stake","winnings","status","betDate"];
+  const missing = need.filter(k => !mapping[k]);
+  if (missing.length)
+    throw new Error("Colunas obrigatórias não encontradas: " +
+      missing.map(k => FIELD_DEFS.find(f => f.key === k).label).join(", "));
+
+  const gi = k => mapping[k] ? mapping[k].idx : -1;
+  const iPid = gi("playerId"), iPl = gi("player"), iIp = gi("clientIp"), iDt = gi("betDate"),
+        iMk = gi("marketTypes"), iSt = gi("stake"), iWn = gi("winnings"), iSs = gi("status"),
+        iBs = gi("bonusStake"), iBw = gi("bonusWinnings");
+
+  const rows = [];
+  for (let i = hr + 1; i < aoa.length; i++) {
+    const r = aoa[i];
+    if (!r) continue;
+    const pidRaw = r[iPid];
+    const mkRaw = r[iMk];
+    // linha sem Player Id e sem mercado = vazia / rodapé
+    if ((pidRaw == null || pidRaw === "") && (mkRaw == null || mkRaw === "")) continue;
+    const stRaw = iSs >= 0 ? r[iSs] : "";
+    rows.push({
+      playerId: pidRaw == null ? "" : String(pidRaw).trim(),
+      player:   iPl >= 0 && r[iPl] != null ? String(r[iPl]).trim() : "",
+      ip:       iIp >= 0 && r[iIp] != null ? String(r[iIp]).trim() : "",
+      dt:       iDt >= 0 ? parseDate(r[iDt]) : null,
+      market:   mkRaw == null ? "" : String(mkRaw).trim(),
+      stake:    parseNum(r[iSt]),
+      win:      parseNum(r[iWn]),
+      bStake:   iBs >= 0 ? parseNum(r[iBs]) : 0,
+      bWin:     iBw >= 0 ? parseNum(r[iBw]) : 0,
+      status:   stRaw == null ? "" : String(stRaw),
+      cls:      classifyStatus(stRaw)
+    });
+  }
+  if (!rows.length) throw new Error("Nenhuma linha de dados encontrada na primeira aba.");
+
+  // aba Totals of report (auto-validação)
+  let totals = null;
+  const tName = wb.SheetNames.find(n => normHdr(n).includes("totals"));
+  if (tName) totals = parseTotalsSheet(wb.Sheets[tName]);
+
+  S.rows = rows; S.headers = headers; S.mapping = mapping; S.totals = totals;
+  S.fileName = name; S.selected = "__ALL__"; S.search = ""; S.sort = {};
+  buildMarkets();
+}
+
+// Totals of report: varre células-rótulo e pega o valor adjacente
+function parseTotalsSheet(ws) {
+  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null});
+  const KEYS = {
+    playerscount:"players", totalbetstakes:"stake", totalbetstake:"stake",
+    totalbetwinnings:"win", totalbetwinning:"win",
+    totalpotwinnings:"pot", totalpotwinning:"pot", net:"net"
+  };
+  const out = {};
+  for (let r = 0; r < aoa.length; r++) {
+    const row = aoa[r] || [];
+    for (let c = 0; c < row.length; c++) {
+      const k = KEYS[normHdr(row[c])];
+      if (!k || out[k] !== undefined) continue;
+      // valor: próxima célula não-nula na linha; senão célula de baixo
+      let val = null;
+      for (let cc = c + 1; cc < row.length; cc++)
+        if (row[cc] != null && row[cc] !== "") { val = row[cc]; break; }
+      if (val == null && aoa[r+1] && aoa[r+1][c] != null && aoa[r+1][c] !== "") val = aoa[r+1][c];
+      if (val != null) out[k] = parseNum(val);
+    }
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function buildMarkets() {
+  const m = new Map();
+  for (const r of S.rows) {
+    const k = r.market || "(sem mercado)";
+    m.set(k, (m.get(k) || 0) + 1);
+  }
+  S.markets = [...m.entries()].map(([name, count]) => ({name, count}))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"));
+}
+
+/* ========================= métricas ========================= */
+function filteredRows() {
+  if (S.selected === "__ALL__") return S.rows;
+  return S.rows.filter(r => (r.market || "(sem mercado)") === S.selected);
+}
+
+// regras financeiras validadas (ver spec)
+function computeMetrics(rows) {
+  const ids = new Set();
+  let bets = 0, open = 0, stake = 0, win = 0, pot = 0, bStake = 0, bWin = 0, bPot = 0;
+  for (const r of rows) {
+    if (r.playerId) ids.add(r.playerId);          // distintos sobre TODAS as linhas
+    if (r.cls !== "rejected") bets++;             // void conta como aposta
+    if (r.cls === "open") { open++; pot += r.win; bPot += r.bWin; }
+    if (r.cls !== "void" && r.cls !== "rejected") { stake += r.stake; bStake += r.bStake; }
+    if (r.cls === "settled") { win += r.win; bWin += r.bWin; }
+  }
+  return {players: ids.size, bets, open, stake, win, pot, bStake, bWin, bPot, net: stake - win};
+}
+
+// mesmo critério financeiro aplicado a um grupo (ID / IP / minuto)
+function groupFin(rows) {
+  let bets = 0, stake = 0, win = 0;
+  for (const r of rows) {
+    if (r.cls !== "rejected") bets++;
+    if (r.cls !== "void" && r.cls !== "rejected") stake += r.stake;
+    if (r.cls === "settled") win += r.win;
+  }
+  return {bets, stake, win, net: stake - win};
+}
+
+/* ===================== análises de comportamento ===================== */
+function analyzeRepeatedIds(rows) {
+  const by = new Map();
+  for (const r of rows) {
+    if (!r.playerId) continue;
+    let g = by.get(r.playerId);
+    if (!g) by.set(r.playerId, g = {id:r.playerId, player:r.player, rows:[], ips:new Set()});
+    g.rows.push(r);
+    if (!g.player && r.player) g.player = r.player;
+    if (r.ip) g.ips.add(r.ip);
+  }
+  const out = [];
+  for (const g of by.values()) {
+    const f = groupFin(g.rows);
+    if (f.bets >= S.N) out.push({id:g.id, player:g.player, bets:f.bets, ips:g.ips.size, stake:f.stake, win:f.win, net:f.net});
+  }
+  return out;
+}
+
+function analyzeSharedIps(rows) {
+  const by = new Map();
+  for (const r of rows) {
+    if (!r.ip) continue;
+    let g = by.get(r.ip);
+    if (!g) by.set(r.ip, g = {ip:r.ip, rows:[], ids:new Set()});
+    g.rows.push(r);
+    if (r.playerId) g.ids.add(r.playerId);
+  }
+  const out = [];
+  for (const g of by.values()) {
+    if (g.ids.size < S.M) continue;
+    const f = groupFin(g.rows);
+    out.push({ip:g.ip, accounts:g.ids.size, bets:f.bets, idList:[...g.ids].sort(), stake:f.stake, win:f.win, net:f.net});
+  }
+  return out;
+}
+
+function analyzeSameMinute(rows) {
+  const by = new Map(); // playerId|minuteKey
+  for (const r of rows) {
+    if (!r.playerId || !r.dt || r.cls === "rejected") continue;
+    const mk = minuteKey(r.dt);
+    const key = r.playerId + "|" + mk;
+    let g = by.get(key);
+    if (!g) by.set(key, g = {id:r.playerId, player:r.player, minute:mk, rows:[], secs:new Set()});
+    g.rows.push(r);
+    g.secs.add(r.dt.s);
+    if (!g.player && r.player) g.player = r.player;
+  }
+  const out = [];
+  for (const g of by.values()) {
+    if (g.rows.length < S.K) continue;
+    if (S.reqSec && g.secs.size < 2) continue;   // exigir ≥2 segundos distintos
+    let stake = 0;
+    for (const r of g.rows) if (r.cls !== "void") stake += r.stake;
+    out.push({id:g.id, player:g.player, minute:g.minute, count:g.rows.length,
+      nSecs:g.secs.size, secs:[...g.secs].sort((a,b)=>a-b).map(p2).join(" · "), stake});
+  }
+  return out;
+}
+
+/* ========================= UI: render ========================= */
+const $ = id => document.getElementById(id);
+
+function renderSidebar() {
+  const list = $("mkt-list");
+  const q = S.search.toLowerCase();
+  const shown = q ? S.markets.filter(m => m.name.toLowerCase().includes(q)) : S.markets;
+  const totalBets = S.rows.length;
+  let html = `
+    <div class="mkt all ${S.selected === "__ALL__" ? "sel" : ""}" data-mkt="__ALL__">
+      <span class="name">Todos os mercados</span><span class="cnt">${fmtI.format(totalBets)}</span>
+    </div>`;
+  for (const m of shown) {
+    html += `<div class="mkt ${S.selected === m.name ? "sel" : ""}" data-mkt="${esc(m.name)}" title="${esc(m.name)}">
+      <span class="name">${esc(m.name)}</span><span class="cnt">${fmtI.format(m.count)}</span></div>`;
+  }
+  if (!shown.length) html += `<div class="empty">Nenhum mercado encontrado.</div>`;
+  list.innerHTML = html;
+  $("mkt-foot").textContent = `${fmtI.format(S.markets.length)} mercados distintos · ${fmtI.format(totalBets)} linhas`;
+  list.querySelectorAll(".mkt").forEach(el => el.addEventListener("click", () => {
+    S.selected = el.dataset.mkt; S.sort = {};
+    renderSidebar(); renderMain();
+  }));
+}
+
+/* ---- tabelas ordenáveis genéricas ---- */
+const TBL_LIMIT = 300;
+const tblData = {};  // tableId -> {cols, rows, showAll}
+
+function sortRows(rows, cols, st) {
+  if (!st || !st.key) return rows;
+  const col = cols.find(c => c.key === st.key);
+  if (!col) return rows;
+  const dir = st.dir;
+  return [...rows].sort((a, b) => {
+    const va = a[st.key], vb = b[st.key];
+    let cmp;
+    if (col.num) cmp = (va || 0) - (vb || 0);
+    else cmp = String(va).localeCompare(String(vb), "pt-BR");
+    return dir === "asc" ? cmp : -cmp;
+  });
+}
+
+function tableHTML(tid, cols, rows, opts = {}) {
+  tblData[tid] = {cols, rows, opts};
+  return `<div class="tbl-wrap" id="${tid}"></div>`;
+}
+
+function paintTable(tid) {
+  const d = tblData[tid];
+  if (!d) return;
+  const el = $(tid);
+  if (!el) return;
+  const st = S.sort[tid];
+  const rows = sortRows(d.rows, d.cols, st);
+  const lim = d.showAll ? rows.length : Math.min(rows.length, TBL_LIMIT);
+  let h = `<table class="dt"><thead><tr>`;
+  for (const c of d.cols) {
+    const arr = st && st.key === c.key ? `<span class="arr">${st.dir === "asc" ? "▲" : "▼"}</span>` : "";
+    h += `<th class="${c.num ? "" : "l"}" data-k="${c.key}">${c.label}${arr}</th>`;
+  }
+  h += `</tr></thead><tbody>`;
+  for (let i = 0; i < lim; i++) {
+    const r = rows[i];
+    h += `<tr class="${d.opts.alert ? "alert-row" : ""}">`;
+    for (const c of d.cols) h += `<td class="${c.num ? "" : "l"}">${c.fmt ? c.fmt(r[c.key], r) : esc(r[c.key])}</td>`;
+    h += `</tr>`;
+  }
+  h += `</tbody></table>`;
+  if (rows.length > lim)
+    h += `<button class="more-btn" data-t="${tid}">Mostrar todas as ${fmtI.format(rows.length)} linhas (+${fmtI.format(rows.length - lim)})</button>`;
+  el.innerHTML = h;
+  el.querySelectorAll("th").forEach(th => th.addEventListener("click", () => {
+    const k = th.dataset.k;
+    const cur = S.sort[tid];
+    S.sort[tid] = {key:k, dir: cur && cur.key === k && cur.dir === "desc" ? "asc" : "desc"};
+    paintTable(tid);
+  }));
+  const mb = el.querySelector(".more-btn");
+  if (mb) mb.addEventListener("click", () => { d.showAll = true; paintTable(tid); });
+}
+
+const fmtMoney = v => money(v);
+const fmtNet = v => `<span class="${v < 0 ? "neg" : v > 0 ? "pos" : ""}">${money(v)}</span>`;
+
+/* ---- main ---- */
+function renderMain() {
+  const rows = filteredRows();
+  const m = computeMetrics(rows);
+  const isAll = S.selected === "__ALL__";
+  const title = isAll ? "Todos os mercados" : S.selected;
+
+  const repId = analyzeRepeatedIds(rows);
+  const shIp = analyzeSharedIps(rows);
+  const sameMin = analyzeSameMinute(rows);
+
+  let html = `
+  <div class="mkt-title">
+    <h1>${esc(title)}</h1>
+    <span class="sub">${fmtI.format(rows.length)} linhas no filtro · análise isolada a este ${isAll ? "consolidado" : "mercado"}</span>
+  </div>`;
+
+  if (!isAll) {
+    html += `<div class="note">Por mercado individual não existe número oficial do Altenar para comparar
+      (o relatório não quebra totais por mercado) — os valores abaixo são produzidos por esta ferramenta.
+      A soma dos IDs distintos de cada mercado não fecha com o total global: o mesmo apostador joga em
+      vários mercados (sobreposição é esperada, não é erro).</div>`;
+  } else {
+    html += `<div class="note">Visão consolidada de todos os mercados do arquivo.</div>`;
+  }
+
+  // KPIs
+  html += `<div class="kpis">
+    <div class="kpi"><div class="k">IDs distintos</div><div class="v">${fmtI.format(m.players)}</div></div>
+    <div class="kpi"><div class="k">Total de apostas</div><div class="v">${fmtI.format(m.bets)}</div></div>
+    <div class="kpi"><div class="k">Em aberto</div><div class="v">${fmtI.format(m.open)}</div></div>
+    <div class="kpi"><div class="k">Total stake</div><div class="v money">${money(m.stake)}</div></div>
+    <div class="kpi"><div class="k">Total win (liquidadas)</div><div class="v money">${money(m.win)}</div></div>
+    <div class="kpi"><div class="k">Pot. winnings (abertas)</div><div class="v money">${money(m.pot)}</div></div>
+    <div class="kpi hl"><div class="k">Net (GGR)</div><div class="v money ${m.net < 0 ? "neg" : ""}">${money(m.net)}</div></div>
+  </div>
+  <div class="kpis bonus">
+    <div class="kpi"><div class="k">Bonus stake</div><div class="v money">${money(m.bStake)}</div></div>
+    <div class="kpi"><div class="k">Bonus winnings</div><div class="v money">${money(m.bWin)}</div></div>
+    <div class="kpi"><div class="k">Bonus potential</div><div class="v money">${money(m.bPot)}</div></div>
+  </div>`;
+
+  // mapeamento de colunas
+  html += `<details class="map"><summary>Mapeamento de colunas detectado</summary><div class="map-grid">`;
+  for (const f of FIELD_DEFS) {
+    const mp = S.mapping[f.key];
+    html += `<div class="map-item"><span class="lf">${f.label}</span>
+      <span class="rh ${mp ? "" : "miss"}">${mp ? esc(mp.header) : "— não encontrada —"}</span></div>`;
+  }
+  html += `</div></details>`;
+
+  /* --- 1. IDs repetidos --- */
+  const sumRep = repId.reduce((a, g) => (a.bets += g.bets, a.stake += g.stake, a.win += g.win, a), {bets:0, stake:0, win:0});
+  html += `<section>
+    <div class="sec-head">
+      <h2><span class="num">1</span>IDs repetidos</h2>
+      <span class="badge">${fmtI.format(repId.length)} sinalizados</span>
+      <button class="btn sm" data-x="rep" title="Baixar esta análise em XLSX">⬇ XLSX</button>
+      <span class="spacer"></span>
+      <label class="ctl">mín. apostas por ID (N) <input type="number" id="inp-N" min="1" value="${S.N}"></label>
+    </div>
+    <div class="sum-line">Total isolado dos sinalizados — apostas: <b>${fmtI.format(sumRep.bets)}</b> ·
+      stake: <b>R$ ${money(sumRep.stake)}</b> · win: <b>R$ ${money(sumRep.win)}</b> ·
+      net: <b>R$ ${money(sumRep.stake - sumRep.win)}</b></div>`;
+  html += repId.length
+    ? tableHTML("tbl-rep", [
+        {key:"id", label:"Player Id"},
+        {key:"player", label:"Player"},
+        {key:"bets", label:"Apostas", num:true, fmt:v => fmtI.format(v)},
+        {key:"ips", label:"IPs distintos", num:true, fmt:v => fmtI.format(v)},
+        {key:"stake", label:"Stake", num:true, fmt:fmtMoney},
+        {key:"win", label:"Win", num:true, fmt:fmtMoney},
+        {key:"net", label:"Net", num:true, fmt:fmtNet},
+      ], repId)
+    : `<div class="empty">Nenhum Player Id com ≥ ${S.N} apostas neste filtro.</div>`;
+  html += `</section>`;
+
+  /* --- 2. IPs compartilhados --- */
+  const sumIp = shIp.reduce((a, g) => (a.bets += g.bets, a.stake += g.stake, a.win += g.win, a), {bets:0, stake:0, win:0});
+  html += `<section>
+    <div class="sec-head">
+      <h2><span class="num">2</span>IPs compartilhados (multiconta)</h2>
+      <span class="badge">${fmtI.format(shIp.length)} sinalizados</span>
+      <button class="btn sm" data-x="ip" title="Baixar esta análise em XLSX">⬇ XLSX</button>
+      <span class="spacer"></span>
+      <label class="ctl">mín. contas por IP (M) <input type="number" id="inp-M" min="1" value="${S.M}"></label>
+    </div>
+    <div class="sum-line">Total isolado dos sinalizados — apostas: <b>${fmtI.format(sumIp.bets)}</b> ·
+      stake: <b>R$ ${money(sumIp.stake)}</b> · win: <b>R$ ${money(sumIp.win)}</b> ·
+      net: <b>R$ ${money(sumIp.stake - sumIp.win)}</b></div>`;
+  html += shIp.length
+    ? tableHTML("tbl-ip", [
+        {key:"ip", label:"Client IP"},
+        {key:"accounts", label:"Contas", num:true, fmt:v => fmtI.format(v)},
+        {key:"bets", label:"Apostas", num:true, fmt:v => fmtI.format(v)},
+        {key:"idList", label:"Player Ids", fmt:v => `<span class="iplist" title="${esc(v.join(", "))}">${esc(v.join(", "))}</span>`},
+        {key:"stake", label:"Stake", num:true, fmt:fmtMoney},
+        {key:"win", label:"Win", num:true, fmt:fmtMoney},
+        {key:"net", label:"Net", num:true, fmt:fmtNet},
+      ], shIp)
+    : `<div class="empty">Nenhum IP usado por ≥ ${S.M} Player Ids distintos neste filtro.</div>`;
+  html += `</section>`;
+
+  /* --- 3. mesmo minuto --- */
+  const sumMin = sameMin.reduce((a, g) => (a.count += g.count, a.stake += g.stake, a), {count:0, stake:0});
+  html += `<section>
+    <div class="sec-head">
+      <h2><span class="num">3</span>Alerta — várias apostas no mesmo minuto</h2>
+      <span class="badge">${fmtI.format(sameMin.length)} ocorrências</span>
+      <button class="btn sm" data-x="min" title="Baixar esta análise em XLSX">⬇ XLSX</button>
+      <span class="spacer"></span>
+      <label class="ctl">mín. apostas no minuto (K) <input type="number" id="inp-K" min="1" value="${S.K}"></label>
+      <label class="ctl switch"><input type="checkbox" id="inp-sec" ${S.reqSec ? "checked" : ""}><span class="tr"></span>exigir segundos diferentes</label>
+    </div>
+    <div class="sum-line">Total nas ocorrências — apostas: <b>${fmtI.format(sumMin.count)}</b> ·
+      stake: <b>R$ ${money(sumMin.stake)}</b></div>`;
+  html += sameMin.length
+    ? tableHTML("tbl-min", [
+        {key:"id", label:"Player Id"},
+        {key:"player", label:"Player"},
+        {key:"minute", label:"Minuto"},
+        {key:"count", label:"Apostas", num:true, fmt:v => fmtI.format(v)},
+        {key:"nSecs", label:"Seg. distintos", num:true, fmt:v => fmtI.format(v)},
+        {key:"secs", label:"Segundos"},
+        {key:"stake", label:"Stake total", num:true, fmt:fmtMoney},
+      ], sameMin, {alert:true})
+    : `<div class="empty">Nenhuma ocorrência com os parâmetros atuais.</div>`;
+  html += `</section>`;
+
+  $("main").innerHTML = html;
+  paintTable("tbl-rep"); paintTable("tbl-ip"); paintTable("tbl-min");
+  bindThresholds();
+  $("main").querySelectorAll(".btn.sm[data-x]").forEach(b =>
+    b.addEventListener("click", () => exportAnalysis(b.dataset.x)));
+}
+
+function bindThresholds() {
+  // re-render preservando o foco do input ativo (senão digitar "10" quebra no "1")
+  const re = () => {
+    const focusId = document.activeElement ? document.activeElement.id : null;
+    S.sort = {}; renderMain();
+    if (focusId) { const el = $(focusId); if (el) el.focus(); }
+  };
+  $("inp-N").addEventListener("input", e => { const v = parseInt(e.target.value); if (v >= 1) { S.N = v; re(); } });
+  $("inp-M").addEventListener("input", e => { const v = parseInt(e.target.value); if (v >= 1) { S.M = v; re(); } });
+  $("inp-K").addEventListener("input", e => { const v = parseInt(e.target.value); if (v >= 1) { S.K = v; re(); } });
+  $("inp-sec").addEventListener("change", e => { S.reqSec = e.target.checked; re(); });
+}
+
+/* ===================== exportação XLSX ===================== */
+// uma linha por mercado com os mesmos KPIs do topo da tela
+function exportMarketsXlsx() {
+  const aoa = [["Mercado", "IDs distintos", "Total de apostas", "Total stake", "Total win", "Net (GGR)"]];
+  const all = computeMetrics(S.rows);
+  aoa.push(["TODOS OS MERCADOS", all.players, all.bets, all.stake, all.win, all.net]);
+  for (const mk of S.markets) {
+    const m = computeMetrics(S.rows.filter(r => (r.market || "(sem mercado)") === mk.name));
+    aoa.push([mk.name, m.players, m.bets, m.stake, m.win, m.net]);
+  }
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [{wch:46}, {wch:13}, {wch:16}, {wch:14}, {wch:14}, {wch:14}];
+  // formato monetário nas colunas D/E/F (stake, win, net)
+  for (let r = 2; r <= aoa.length; r++)
+    for (const c of ["D", "E", "F"]) {
+      const cell = ws[c + r];
+      if (cell && typeof cell.v === "number") cell.z = "#,##0.00";
+    }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Mercados");
+  const base = (S.fileName || "betlist").replace(/\.[^.]+$/, "");
+  XLSX.writeFile(wb, base + " - por mercado.xlsx");
+}
+$("btn-export").addEventListener("click", exportMarketsXlsx);
+
+/* ---- exportação por análise (respeita mercado, N/M/K e ordenação da tela) ---- */
+const sheetName = s => (String(s).replace(/[\\\/?*\[\]:]/g, " ").trim().slice(0, 31) || "Dados");
+
+function saveSheets(sheets, fileBase) {
+  const wb = XLSX.utils.book_new();
+  for (const sh of sheets) {
+    const ws = XLSX.utils.aoa_to_sheet(sh.aoa);
+    if (sh.cols) ws["!cols"] = sh.cols;
+    for (const c of (sh.money || []))          // formato monetário R$ nas colunas indicadas
+      for (let r = 2; r <= sh.aoa.length; r++) {
+        const cell = ws[c + r];
+        if (cell && typeof cell.v === "number") cell.z = "#,##0.00";
+      }
+    XLSX.utils.book_append_sheet(wb, ws, sheetName(sh.name));
+  }
+  XLSX.writeFile(wb, fileBase + ".xlsx");
+}
+
+// ordena igual a tela (usa a ordenação clicada na tabela, se houver)
+function sortedLike(tid, data) {
+  const d = tblData[tid];
+  return d ? sortRows(data, d.cols, S.sort[tid]) : data;
+}
+
+// sufixo do arquivo: nome-base + mercado filtrado
+function fileBaseFor(label) {
+  const base = (S.fileName || "betlist").replace(/\.[^.]+$/, "");
+  const mk = S.selected === "__ALL__" ? "todos os mercados" : S.selected;
+  return `${base} - ${label} (${sheetName(mk)})`;
+}
+
+function exportAnalysis(kind) {
+  const rows = filteredRows();
+
+  if (kind === "rep") {
+    const data = sortedLike("tbl-rep", analyzeRepeatedIds(rows));
+    const aoa = [["Player Id", "Player", "Apostas", "IPs distintos", "Stake", "Win", "Net"]];
+    for (const g of data) aoa.push([g.id, g.player, g.bets, g.ips, g.stake, g.win, g.net]);
+    saveSheets([{name:"IDs repetidos", aoa,
+      cols:[{wch:16},{wch:22},{wch:10},{wch:13},{wch:13},{wch:13},{wch:13}], money:["E","F","G"]}],
+      fileBaseFor("IDs repetidos"));
+
+  } else if (kind === "ip") {
+    const data = sortedLike("tbl-ip", analyzeSharedIps(rows));
+    // aba 1: resumo, uma linha por IP
+    const resumo = [["Client IP", "Contas distintas", "Apostas", "Stake", "Win", "Net", "Qtde Player Ids", "Player Ids"]];
+    for (const g of data)
+      resumo.push([g.ip, g.accounts, g.bets, g.stake, g.win, g.net, g.idList.length, g.idList.join(", ")]);
+    // aba 2: uma linha por par IP × Player Id (ideal p/ filtro/tabela dinâmica)
+    const pares = [["Client IP", "Player Id", "Contas no IP", "Apostas no IP"]];
+    for (const g of data) for (const id of g.idList) pares.push([g.ip, id, g.accounts, g.bets]);
+    saveSheets([
+      {name:"IPs compartilhados", aoa:resumo,
+        cols:[{wch:16},{wch:16},{wch:9},{wch:13},{wch:13},{wch:13},{wch:15},{wch:60}], money:["D","E","F"]},
+      {name:"IP x Player Id", aoa:pares, cols:[{wch:16},{wch:16},{wch:13},{wch:14}]}
+    ], fileBaseFor("IPs compartilhados"));
+
+  } else if (kind === "min") {
+    const data = sortedLike("tbl-min", analyzeSameMinute(rows));
+    const aoa = [["Player Id", "Player", "Minuto", "Apostas", "Seg. distintos", "Segundos", "Stake total"]];
+    for (const g of data) aoa.push([g.id, g.player, g.minute, g.count, g.nSecs, g.secs, g.stake]);
+    saveSheets([{name:"Mesmo minuto", aoa,
+      cols:[{wch:16},{wch:22},{wch:18},{wch:9},{wch:14},{wch:24},{wch:13}], money:["G"]}],
+      fileBaseFor("Mesmo minuto"));
+  }
+}
+
+/* ===================== upload / boot ===================== */
+function showError(msg) {
+  const el = $("up-err");
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+function handleFile(file) {
+  $("up-err").style.display = "none";
+  const dz = $("dropzone");
+  dz.querySelector("h2").textContent = "Lendo arquivo…";
+  const fr = new FileReader();
+  fr.onload = e => {
+    try {
+      loadWorkbook(new Uint8Array(e.target.result), file.name);
+      $("upload-screen").style.display = "none";
+      $("topbar").style.display = "flex";
+      $("app").classList.add("on");
+      $("btn-change").style.display = "";
+      $("btn-export").style.display = "";
+      $("fileinfo").innerHTML = `<code>${esc(file.name)}</code> · ${fmtI.format(S.rows.length)} linhas ·
+        ${fmtI.format(S.markets.length)} mercados${S.totals ? " · Totals of report ✓" : ""}`;
+      renderSidebar(); renderMain();
+    } catch (err) {
+      dz.querySelector("h2").textContent = "Solte o relatório Bet List aqui";
+      showError("Erro ao ler o arquivo: " + err.message);
+    }
+  };
+  fr.onerror = () => {
+    dz.querySelector("h2").textContent = "Solte o relatório Bet List aqui";
+    showError("Não foi possível ler o arquivo.");
+  };
+  fr.readAsArrayBuffer(file);
+}
+
+const dz = $("dropzone"), fi = $("file-input");
+dz.addEventListener("click", () => fi.click());
+fi.addEventListener("change", () => { if (fi.files[0]) handleFile(fi.files[0]); fi.value = ""; });
+dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("over"); });
+dz.addEventListener("dragleave", () => dz.classList.remove("over"));
+dz.addEventListener("drop", e => {
+  e.preventDefault(); dz.classList.remove("over");
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+$("btn-change").addEventListener("click", () => {
+  $("app").classList.remove("on");
+  $("topbar").style.display = "none";
+  $("upload-screen").style.display = "flex";
+  $("btn-change").style.display = "none";
+  $("btn-export").style.display = "none";
+  $("fileinfo").textContent = "";
+});
+$("mkt-search").addEventListener("input", e => { S.search = e.target.value; renderSidebar(); });
+
+</script>
+</body>
+</html>

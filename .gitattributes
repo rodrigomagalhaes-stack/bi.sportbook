@@ -1,0 +1,9 @@
+# Fim de linha estável entre Windows e o build da Vercel (Linux). Sem isto, o
+# primeiro clone em outra máquina reescreve arquivos inteiros e polui o diff.
+* text=auto eol=lf
+
+# Binários não passam por conversão nenhuma.
+*.png binary
+*.jpg binary
+*.ico binary
+*.xlsx binary

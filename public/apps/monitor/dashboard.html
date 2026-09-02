@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor de Bilhetes — Super Odds</title>
+<link rel="stylesheet" href="/apps/_shared/tema.css">
+<style>
+  :root{
+    /* Cores vindas do tema comum do portal (/apps/_shared/tema.css). Os nomes
+       usados no CSS desta pagina continuam os mesmos — so a origem mudou. */
+    --orange:var(--pb-acc);
+    --orange-dark:var(--pb-acc-2);
+    --graphite:var(--pb-t1);
+    --bg:var(--pb-bg);
+    --card:var(--pb-surface);
+    --line:var(--pb-linha);
+    --green:var(--pb-verde);
+    --amber:var(--pb-amarelo);
+    --red:var(--pb-vermelho);
+    --muted:var(--pb-t3);
+    --mono:var(--pb-mono);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--graphite);}
+  header{background:var(--graphite);color:#fff;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+  header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.2px;}
+  header h1 span{color:var(--orange);}
+  .status-line{font-size:13px;color:var(--pb-t2);display:flex;align-items:center;gap:10px;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .wrap{max-width:1120px;margin:0 auto;padding:22px 20px 60px;}
+  .controls{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+  button{background:var(--orange);color:#fff;border:none;padding:8px 15px;border-radius:7px;font-weight:600;font-size:13px;cursor:pointer;}
+  button:hover{background:var(--orange-dark);}
+  button.secondary{background:#fff;color:var(--graphite);border:1px solid var(--line);}
+  button.secondary:hover{background:var(--pb-surface-3);}
+  button.secondary.on{background:var(--graphite);color:#fff;border-color:var(--graphite);}
+  .meta{font-size:12.5px;color:var(--pb-t3);}
+  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px;}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 15px;}
+  .stat .num{font-size:23px;font-weight:800;font-family:var(--mono);}
+  .stat .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;}
+  .stat.danger{border-color:var(--pb-linha);background:var(--pb-vermelho-soft);}
+  .stat.danger .num{color:var(--red);}
+  .stat.warn .num{color:var(--amber);}
+
+  /* Faixa de destaque: o que acabou de esgotar */
+  .fechadas{background:var(--card);border:1px solid var(--pb-linha);border-left:4px solid var(--red);border-radius:10px;padding:4px 0;margin-bottom:18px;}
+  .fechadas h2{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--red);margin:12px 16px 8px;}
+  .fechada{padding:10px 16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:14px;align-items:baseline;flex-wrap:wrap;}
+  .fechada .quando{font-family:var(--mono);font-weight:800;font-size:15px;color:var(--red);white-space:nowrap;}
+  .fechada .qual{font-size:13.5px;font-weight:600;}
+  .fechada .det{font-family:var(--mono);font-size:11.5px;color:var(--muted);}
+
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;border:1px solid var(--line);}
+  thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line);background:var(--pb-surface-2);white-space:nowrap;}
+  tbody td{padding:10px 12px;font-size:13.5px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--pb-surface-2);}
+  tbody tr.esgotada{background:var(--pb-vermelho-soft);}
+  .ev{font-weight:600;}
+  .ev small{display:block;font-weight:400;color:var(--muted);font-size:11.5px;margin-top:2px;}
+  .num-cell{font-family:var(--mono);font-weight:700;font-size:13.5px;white-space:nowrap;}
+  .sub{font-family:var(--mono);font-size:11.5px;color:var(--muted);font-weight:400;}
+  .bar{width:120px;height:7px;background:var(--pb-surface-3);border-radius:4px;overflow:hidden;margin-top:5px;}
+  .bar i{display:block;height:100%;background:var(--green);}
+  .bar i.warn{background:var(--amber);}
+  .bar i.full{background:var(--red);}
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+  .badge.ok{background:var(--pb-verde-soft);color:var(--green);}
+  .badge.warn{background:var(--pb-amarelo-soft);color:var(--amber);}
+  .badge.stall{background:var(--pb-vermelho-soft);color:var(--red);}
+  .badge.idle{background:var(--pb-surface-3);color:var(--pb-t3);}
+  .badge.full{background:var(--red);color:#fff;}
+  .kind{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:4px;}
+  .kind.golden{background:var(--pb-amarelo-soft);color:var(--pb-amarelo);}
+  .kind.turbo{background:var(--pb-acc-soft);color:var(--orange-dark);}
+  .kind.welcome{background:var(--pb-azul-soft);color:var(--pb-azul);}
+  .kind.oculta{background:var(--graphite);color:#fff;}
+  .alerts{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:4px 0;margin-bottom:18px;}
+  .alerts h2{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:12px 16px 8px;}
+  .alert-item{padding:9px 16px;border-top:1px solid var(--line);font-size:13px;white-space:pre-line;line-height:1.45;}
+  .alert-item time{color:var(--muted);font-family:var(--mono);font-size:11.5px;display:block;margin-bottom:2px;}
+  .empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:13.5px;}
+  footer{text-align:center;font-size:12px;color:var(--pb-t3);padding:26px 0 10px;line-height:1.6;}
+  h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:0 0 10px;}
+  /* ── ajustes do tema claro ──────────────────────────────────────────────
+     O cabeçalho escuro com o nome do programa deu lugar a uma faixa clara: o
+     título agora vem do portal e sobra só o estado da coleta, que é a única
+     coisa util dali. A borda vermelha das secoes de alerta volta explicita,
+     porque #F3C3BC virou a linha neutra na troca de paleta. */
+  header{background:var(--pb-surface);color:var(--pb-t1);border-bottom:1px solid var(--pb-linha);padding:12px 28px;}
+  .status-line{color:var(--pb-t2);}
+  .fechadas{border-color:#f5c6c0;}
+  .stat.danger{border-color:#f5c6c0;}
+  tbody tr.esgotada{background:var(--pb-vermelho-soft);}
+  .stat{box-shadow:var(--pb-sombra);}
+  button.secondary.on{background:var(--pb-acc-soft);color:var(--pb-acc);border-color:var(--pb-acc-linha);}
+  .falha{grid-column:1/-1;display:flex;flex-direction:column;gap:6px;padding:18px 20px;
+    border:1px solid #f5c6c0;border-left:4px solid var(--pb-vermelho);border-radius:10px;
+    background:var(--pb-vermelho-soft);}
+  .falha b{font-size:14px;color:var(--pb-vermelho);}
+  .falha span{font-size:12.5px;color:var(--pb-t2);font-family:var(--pb-mono);}
+  .falha .dica{font-family:var(--pb-font);color:var(--pb-t3);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="status-line">
+    <span class="dot" id="liveDot"></span>
+    <span id="statusText">carregando…</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="controls">
+    <button id="refreshBtn">Atualizar agora</button>
+    <button class="secondary on" data-filter="comTrava">Só com trava</button>
+    <button class="secondary" data-filter="ativos">Só com bilhetes</button>
+    <button class="secondary" data-filter="todos">Todas</button>
+    <span class="meta" id="lastUpdate"></span>
+  </div>
+
+  <div class="stats-row" id="stats"></div>
+
+  <div class="fechadas" id="fechadasBox" hidden>
+    <h2>Travas que fecharam</h2>
+    <div id="fechadasList"></div>
+  </div>
+
+  <div class="alerts" id="alertsBox" hidden>
+    <h2>Alertas recentes</h2>
+    <div id="alertsList"></div>
+  </div>
+
+  <h2 class="sec">Boosts</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Jogo / boost</th>
+        <th>Bilhetes</th>
+        <th>Faltam</th>
+        <th>Velocidade</th>
+        <th>Fecha em (projeção)</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <tr><td colspan="6" class="empty">Carregando…</td></tr>
+    </tbody>
+  </table>
+
+</div>
+
+<footer id="foot"></footer>
+
+<script>
+const POLL_MS = 10000;
+// De onde o painel lê os números.
+//
+// A coleta é um processo contínuo: um agendador chama /api/cron de minuto em
+// minuto e grava as contagens no Postgres. Quem faz isso hoje é o deploy
+// `monitor-bilhetes-superodds`, que já está no ar, com banco e agendador
+// funcionando — e a API dele é pública e CORS-aberta.
+//
+// Entao o portal lê de lá em vez de montar um segundo coletor gravando no
+// mesmo banco (o que duplicaria as leituras e os alertas). O código do backend
+// continua todo aqui, em server/monitor e api/monitor: para o portal servir os
+// números por conta própria, basta trocar esta constante por '/api/monitor' e
+// preencher DATABASE_URL no ambiente — e, aí sim, desligar o cron do outro
+// projeto para os dois não coletarem em paralelo.
+const API = 'https://monitor-bilhetes-superodds.vercel.app/api';
+
+let filtro = 'comTrava';
+let cfg = {};
+
+const nf = (n) => Number(n ?? 0).toLocaleString('pt-BR');
+const dur = (m) => m == null ? '—' : m < 1 ? 'menos de 1 min' : m < 60 ? Math.round(m)+' min' : Math.floor(m/60)+'h'+String(Math.round(m%60)).padStart(2,'0');
+const hora = (iso) => new Date(iso).toLocaleTimeString('pt-BR');
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const STATUS_BADGE = {
+  esgotado: ['full',  'ESGOTADA'],
+  quase:    ['warn',  'a ponto de fechar'],
+  parado:   ['stall', 'parou de vender'],
+  encerrada:['idle',  'encerrada (saiu da lista)'],
+  ativo:    ['ok',    'com bilhetes'],   // vira "vendendo" só quando a contagem mexe
+  sem_uso:  ['idle',  'sem bilhetes'],
+};
+
+async function carregar(){
+  try{
+    document.getElementById('statusText').textContent = 'atualizando…';
+    const [st, al] = await Promise.all([
+      pedir(API + '/state'),
+      pedir(API + '/alerts?limit=6').catch(() => ({alertas:[]})),
+    ]);
+    cfg = st.config || {};
+    render(st, al.alertas || []);
+    // `generatedAt` é a hora em que a API respondeu — sempre agora. Usá-la como
+    // "última leitura" fazia o painel piscar "ao vivo" mesmo com o monitor
+    // parado havia dias. O que vale é `resumo.ultimaLeitura`, que vem do banco.
+    const r = st.resumo || {};
+    const idade = r.idadeSegundos;
+    const parado = idade == null || idade > 600;   // 10 min sem ler = algo travou
+    const atrasado = !parado && idade > 120;
+    document.getElementById('statusText').textContent =
+      idade == null ? 'nunca leu' : parado ? 'monitor parado' : atrasado ? 'atrasado' : 'ao vivo';
+    document.getElementById('liveDot').style.background =
+      parado ? '#C0392B' : atrasado ? '#C87F0A' : '#1E8E5A';
+    document.getElementById('lastUpdate').textContent = r.ultimaLeitura
+      ? 'Última leitura: ' + new Date(r.ultimaLeitura).toLocaleTimeString('pt-BR') + ' · há ' + dur(idade / 60)
+      : 'Nenhuma leitura registrada';
+  }catch(e){
+    document.getElementById('statusText').textContent = 'sem contato com o monitor';
+    document.getElementById('liveDot').style.background = 'var(--red)';
+    mostrarFalha(e.message);
+    console.error(e);
+  }
+}
+
+// A API devolve 500 com {erro} quando o banco recusa a conexão, e o `.json()`
+// engolia isso como resposta valida: o painel seguia adiante e pintava
+// "undefined" em cada indicador. Falhar aqui é o que faz o motivo aparecer.
+async function pedir(url){
+  const r = await fetch(url);
+  const dados = await r.json().catch(() => ({}));
+  if (!r.ok || dados.erro) throw new Error(dados.erro || ('HTTP ' + r.status));
+  return dados;
+}
+
+function mostrarFalha(motivo){
+  document.getElementById('stats').innerHTML =
+    '<div class="falha">' +
+      '<b>O monitor não respondeu.</b>' +
+      '<span>' + esc(motivo) + '</span>' +
+      '<span class="dica">O painel lê de ' + API + '. Se a mensagem acima for de rede, ' +
+      'esse deploy está fora do ar; se falar em DATABASE_URL, é o banco dele que não ' +
+      'responde. A coleta acontece lá, não aqui.</span>' +
+    '</div>';
+  document.getElementById('tableBody').innerHTML = '';
+  // uma tabela vazia embaixo do erro é só ruído: some junto
+  const tabela = document.querySelector('.tabela-boosts') || document.getElementById('tableBody').closest('table');
+  if (tabela) tabela.hidden = true;
+  document.querySelectorAll('.wrap > h2').forEach((h) => { h.hidden = true; });
+  document.getElementById('fechadasBox').hidden = true;
+  document.getElementById('alertsBox').hidden = true;
+  document.getElementById('lastUpdate').textContent = '';
+}
+
+function render(st, alertas){
+  const r = st.resumo || {};
+
+  document.getElementById('stats').innerHTML = [
+    [r.esgotados, 'Travas esgotadas', r.esgotados > 0 ? 'danger' : ''],
+    [r.quase, 'A ponto de fechar', r.quase > 0 ? 'warn' : ''],
+    [r.parados, 'Pararam de vender', ''],
+    [r.encerradas, 'Encerradas hoje', ''],
+    [r.vendendo, 'Vendendo agora', ''],
+    [r.comBilhetes, 'Com bilhetes', ''],
+    [r.comTrava + '/' + r.total, 'Com trava conhecida', ''],
+  ].map(([num, label, cls]) =>
+    `<div class="stat ${cls}"><div class="num">${num}</div><div class="label">${label}</div></div>`
+  ).join('');
+
+  // Destaque: as travas que fecharam, com a hora exata quando acompanhamos a subida.
+  const fechadas = (st.boosts || []).filter(b => b.status === 'esgotado')
+    .sort((a, b) => (b.esgotadoEm || '').localeCompare(a.esgotadoEm || ''));
+  const fBox = document.getElementById('fechadasBox');
+  if(fechadas.length){
+    fBox.hidden = false;
+    document.getElementById('fechadasList').innerHTML = fechadas.map(b => `
+      <div class="fechada">
+        <div>
+          <div class="qual"><span class="kind ${esc(b.kind)}">${esc(b.kindLabel)}</span> ${esc(b.eventName)}</div>
+          <div class="det">${nf(b.count)}/${nf(b.betsLimit)} bilhetes · item ${b.itemId}</div>
+        </div>
+        <div class="quando">${b.esgotadoEm
+          ? hora(b.esgotadoEm) + '<div class="det">há ' + dur(b.esgotadoHaMin) + '</div>'
+          : '<span class="det">já esgotada quando o monitor começou</span>'}</div>
+      </div>`).join('');
+  } else fBox.hidden = true;
+
+  const aBox = document.getElementById('alertsBox');
+  if(alertas.length){
+    aBox.hidden = false;
+    document.getElementById('alertsList').innerHTML = alertas.map(a =>
+      `<div class="alert-item"><time>${new Date(a.ts).toLocaleString('pt-BR')}${a.delivered ? '' : ' · só no painel'}</time>${esc(a.message)}</div>`
+    ).join('');
+  } else aBox.hidden = true;
+
+  let linhas = st.boosts || [];
+  if(filtro === 'comTrava') linhas = linhas.filter(b => b.betsLimit > 0);
+  else if(filtro === 'ativos') linhas = linhas.filter(b => b.count > 0);
+
+  const tbody = document.getElementById('tableBody');
+  if(!linhas.length){
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Nada para mostrar neste filtro.</td></tr>';
+  } else {
+    tbody.innerHTML = linhas.map(b => {
+      let [cls, texto] = STATUS_BADGE[b.status] || ['idle', b.status];
+      if(b.status === 'ativo' && b.rate > 0) texto = 'vendendo';
+      const pct = b.pct != null ? b.pct : null;
+      const barCls = pct == null ? '' : pct >= 1 ? 'full' : pct >= (cfg.nearLimitPct || .9) ? 'warn' : '';
+      const bar = b.betsLimit > 0
+        ? `<div class="bar"><i class="${barCls}" style="width:${Math.min(100, (pct||0)*100).toFixed(1)}%"></i></div>`
+        : '';
+      const contagem = b.betsLimit > 0
+        ? `${nf(b.count)}<span class="sub"> / ${nf(b.betsLimit)} · ${((pct||0)*100).toFixed(1)}%</span>`
+        : `${nf(b.count)}<span class="sub"> / trava não informada</span>`;
+      const faltam = b.betsLimit > 0
+        ? (b.restante > 0 ? nf(b.restante) : '<span class="sub">fechou</span>')
+        : '<span class="sub">—</span>';
+      const fecha = b.status === 'encerrada'
+        ? (b.saiuDaListaEm ? `<span class="sub">saiu ${hora(b.saiuDaListaEm)}</span>` : '<span class="sub">—</span>')
+        : b.status === 'esgotado'
+        ? (b.esgotadoEm ? `<span class="sub">fechou ${hora(b.esgotadoEm)}</span>` : '<span class="sub">—</span>')
+        : (b.etaMinutes != null ? '~' + dur(b.etaMinutes) : '<span class="sub">—</span>');
+      const parado = b.stalledMinutes != null && b.stalledMinutes >= 5 && b.status !== 'esgotado'
+        ? `<br><span class="sub">parado há ${dur(b.stalledMinutes)}</span>` : '';
+
+      return `<tr class="${b.status === 'esgotado' ? 'esgotada' : ''}">
+        <td>
+          <div class="ev"><span class="kind ${esc(b.kind)}">${esc(b.kindLabel)}</span> ${esc(b.eventName)}</div>
+          <small class="sub">${esc(b.champName || '')} · item ${b.itemId} · odd ${b.price ?? '—'}${b.basePrice ? ' (de '+b.basePrice+')' : ''}</small>
+        </td>
+        <td class="num-cell">${contagem}${bar}</td>
+        <td class="num-cell">${faltam}</td>
+        <td class="num-cell">${b.rate > 0 ? b.rate.toFixed(1)+'<span class="sub">/min</span>' : '<span class="sub">—</span>'}${parado}</td>
+        <td class="num-cell">${fecha}</td>
+        <td><span class="badge ${cls}">${texto}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  const ocultas = (st.boosts || []).filter(b => b.kind === 'oculta').length;
+  document.getElementById('foot').innerHTML =
+    // `cfg.pollSeconds` só descreve o loop contínuo (`npm run start`). Rodando
+    // como função serverless, cada chamada do cron faz UMA leitura, então a
+    // cadência real é a do agendador — medida aqui, não prometida.
+    `Painel recarrega a cada ${POLL_MS/1000}s · monitor lê a Esportiva ` +
+    (r.intervaloMedioSegundos
+      ? `a cada ~${r.intervaloMedioSegundos < 90
+          ? Math.round(r.intervaloMedioSegundos) + 's'
+          : Math.round(r.intervaloMedioSegundos / 60) + 'min'} (medido)`
+      : 'em intervalo ainda não medido') +
+    `, direto na origem<br>` +
+    `A hora de fechamento é o instante da última venda registrada. Boosts já esgotadas quando o monitor subiu não têm hora conhecida.<br>` +
+    `Medidos de verdade: contagem de bilhetes, trava, velocidade e hora do fechamento. "Fecha em" é projeção pela velocidade atual. ` +
+    `Valor apostado em R$ a Esportiva não expõe — o monitor não estima.` +
+    `<br>Uma boost some deste painel assim que some do site — mesmo ciclo em que a lista oficial deixa de trazê-la (o jogo começou) ou, para as "fora da lista", assim que param de vender por um tempo.` +
+    (ocultas ? `<br><b>${ocultas}</b> boost(s) marcada(s) como <b>Fora da lista</b>: achadas pela varredura porque a lista oficial da Esportiva corta em 100 cards. Não têm nome nem trava conhecida — dá para ver quanto venderam e quando pararam, não quando esgotaram.` : '');
+}
+
+document.getElementById('refreshBtn').addEventListener('click', carregar);
+document.querySelectorAll('[data-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    filtro = btn.dataset.filter;
+    document.querySelectorAll('[data-filter]').forEach(b => b.classList.toggle('on', b === btn));
+    carregar();
+  });
+});
+
+carregar();
+setInterval(carregar, POLL_MS);
+</script>
+
+</body>
+</html>

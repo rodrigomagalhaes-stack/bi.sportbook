@@ -1,0 +1,11 @@
+# O deploy leva só o que o build precisa. Sem isto, a CLI enviaria _originais/
+# junto — que tem os seis projetos antigos, seus node_modules e um .env com a
+# DATABASE_URL de produção do monitor.
+_originais/
+node_modules/
+dist/
+.git/
+
+.env
+.env.*
+!.env.example

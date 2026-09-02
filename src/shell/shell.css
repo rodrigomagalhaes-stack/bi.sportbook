@@ -1,0 +1,485 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Shell do portal. Todo seletor daqui usa o prefixo `pb-` e as variáveis
+   `--pb-*`: os módulos trazem CSS global próprio (e conflitante entre si),
+   que o vite.config.js escopa em `.m-<modulo>`. Manter os dois namespaces
+   separados é o que permite Pick'em (tema escuro) e Welcome Boost (tema
+   claro) coexistirem no mesmo bundle.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Paleta única do portal. Os mesmos valores estão em
+   public/apps/_shared/tema.css, que veste as telas embutidas — elas rodam
+   dentro de um iframe e não enxergam este arquivo. Mudou uma cor aqui, mude
+   lá também: os dois juntos é que fazem moldura e conteúdo parecerem o mesmo
+   produto. */
+:root {
+  --pb-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --pb-mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* superfícies */
+  --pb-bg: #f4f5f7;
+  --pb-surface: #ffffff;
+  --pb-surface-2: #fafbfc;
+  --pb-surface-3: #f1f3f6;
+  --pb-linha: #e5e7eb;
+  --pb-linha-2: #d6d9df;
+  --pb-linha-forte: #d6d9df;
+  --pb-ativo-bg: #f1f3f6;
+
+  /* texto */
+  --pb-t1: #14171f;
+  --pb-t2: #5b6270;
+  --pb-t3: #8b91a0;
+
+  /* marca */
+  --pb-acc: #ff4d1c;
+  --pb-acc-2: #e63f11;
+  --pb-acc-soft: #fff1ec;
+  --pb-acc-linha: #ffd9cd;
+
+  /* semânticas — sempre em par com o fundo suave correspondente */
+  --pb-verde: #12a150;      --pb-verde-soft: #e9f7ef;
+  --pb-vermelho: #dc2626;   --pb-vermelho-soft: #fdecea;
+  --pb-amarelo: #b8770a;    --pb-amarelo-soft: #fdf4e3;
+  --pb-azul: #2563eb;       --pb-azul-soft: #eaf1fe;
+  --pb-roxo: #7c3aed;       --pb-roxo-soft: #f2ecfe;
+
+  --pb-r: 8px;
+  --pb-sombra: 0 1px 2px rgba(20, 23, 31, .04);
+
+  --pb-sidebar-w: 268px;
+  --pb-sidebar-w-min: 68px;
+  --pb-topo-h: 62px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--pb-font);
+  background: var(--pb-bg);
+  color: var(--pb-t1);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── carregando a sessão ── */
+
+.pb-boot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: #191320;
+}
+
+.pb-boot-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--pb-acc);
+  border-radius: 50%;
+  animation: pb-girar 0.7s linear infinite;
+}
+
+@keyframes pb-girar { to { transform: rotate(360deg); } }
+
+/* ── estrutura ── */
+
+.pb-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.pb-sidebar {
+  width: var(--pb-sidebar-w);
+  flex-shrink: 0;
+  background: var(--pb-surface);
+  border-right: 1px solid var(--pb-linha);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.18s ease;
+}
+
+.pb-shell.recolhida .pb-sidebar { width: var(--pb-sidebar-w-min); }
+
+.pb-principal {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── marca ── */
+
+.pb-marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid var(--pb-linha);
+  min-height: var(--pb-topo-h);
+}
+
+.pb-marca-badge {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: var(--pb-acc);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pb-marca-txt { display: flex; flex-direction: column; min-width: 0; }
+
+.pb-marca-txt strong {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.pb-marca-txt span { font-size: 10.5px; color: var(--pb-t3); white-space: nowrap; }
+
+.pb-recolher {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--pb-linha);
+  border-radius: 7px;
+  background: var(--pb-surface);
+  color: var(--pb-t2);
+  cursor: pointer;
+  transform: rotate(180deg);
+  transition: background 0.15s, transform 0.18s;
+}
+
+.pb-recolher:hover { background: var(--pb-ativo-bg); }
+.pb-shell.recolhida .pb-recolher { transform: rotate(0deg); }
+.pb-shell.recolhida .pb-marca-txt { display: none; }
+.pb-shell.recolhida .pb-marca { padding: 14px 8px; flex-direction: column; gap: 8px; }
+
+/* ── busca ── */
+
+.pb-busca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 14px 6px;
+  padding: 8px 11px;
+  border: 1px solid var(--pb-linha);
+  border-radius: 9px;
+  background: var(--pb-bg);
+  color: var(--pb-t3);
+}
+
+.pb-busca input {
+  border: none;
+  background: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--pb-t1);
+  width: 100%;
+  min-width: 0;
+}
+
+.pb-shell.recolhida .pb-busca { display: none; }
+
+/* ── navegação ── */
+
+.pb-nav { flex: 1; overflow-y: auto; padding: 6px 10px 20px; }
+.pb-nav-vazio { font-size: 12px; color: var(--pb-t3); padding: 12px 8px; }
+
+.pb-secao + .pb-secao { margin-top: 2px; }
+
+.pb-secao-cab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  color: var(--pb-t2);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s;
+}
+
+.pb-secao-cab:hover { background: var(--pb-ativo-bg); color: var(--pb-t1); }
+.pb-secao-label { flex: 1; text-align: left; white-space: nowrap; }
+
+.pb-chevron {
+  display: flex;
+  color: var(--pb-t3);
+  transform: rotate(90deg);
+  transition: transform 0.18s;
+}
+
+.pb-chevron.aberta { transform: rotate(-90deg); }
+.pb-shell.recolhida .pb-secao-label,
+.pb-shell.recolhida .pb-chevron { display: none; }
+.pb-shell.recolhida .pb-secao-cab { justify-content: center; padding: 10px 0; }
+
+.pb-secao-itens { display: flex; flex-direction: column; padding: 2px 0 6px; }
+
+.pb-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 12px;
+  margin-left: 18px;
+  border-radius: 8px;
+  color: var(--pb-t2);
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.13s, color 0.13s;
+}
+
+.pb-item:hover { background: var(--pb-ativo-bg); color: var(--pb-t1); }
+.pb-item.ativo { background: var(--pb-acc-soft); color: var(--pb-acc); font-weight: 600; }
+
+.pb-item-marca {
+  width: 5px;
+  height: 5px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--pb-linha-forte);
+}
+
+.pb-item.ativo .pb-item-marca { background: var(--pb-acc); }
+.pb-item-txt { overflow: hidden; text-overflow: ellipsis; }
+
+.pb-shell.recolhida .pb-item { margin-left: 0; justify-content: center; padding: 8px 0; }
+.pb-shell.recolhida .pb-item-txt { display: none; }
+
+/* ── topo ── */
+
+.pb-topo {
+  height: var(--pb-topo-h);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 22px;
+  background: var(--pb-surface);
+  border-bottom: 1px solid var(--pb-linha);
+}
+
+.pb-topo-titulo { display: flex; flex-direction: column; min-width: 0; }
+
+.pb-topo-secao {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--pb-t3);
+}
+
+.pb-topo h1 {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-topo-dir { display: flex; align-items: center; gap: 10px; }
+
+.pb-topo-aviso {
+  font-size: 11px;
+  color: #a16207;
+  background: #fef6e0;
+  border: 1px solid #f3e0ab;
+  border-radius: 999px;
+  padding: 4px 11px;
+}
+
+.pb-avatar {
+  width: 33px;
+  height: 33px;
+  border-radius: 50%;
+  background: #7a1a08;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pb-sair {
+  width: 33px;
+  height: 33px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--pb-linha);
+  border-radius: 9px;
+  background: var(--pb-surface);
+  color: var(--pb-t2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.pb-sair:hover { background: var(--pb-acc-soft); color: var(--pb-acc); }
+
+/* ── conteúdo ── */
+
+.pb-conteudo {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+/* Wrapper de cada módulo React: é aqui que pousam as variáveis e as regras de
+   `body` do CSS original de cada um (ver o escopo no vite.config.js). */
+.m-pickem,
+.m-welcome-boost {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── páginas embutidas (iframe) ── */
+
+.pb-embed {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  position: relative;
+}
+
+.pb-embed iframe {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: var(--pb-surface);
+}
+
+.pb-embed-barra {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: rgba(20, 23, 31, 0.86);
+  color: #fff;
+  font-size: 11.5px;
+  text-decoration: none;
+  opacity: 0.32;
+  transition: opacity 0.15s;
+}
+
+.pb-embed-barra:hover { opacity: 1; }
+
+/* ── página inicial ── */
+
+.pb-home { padding: 26px 28px 44px; }
+.pb-home-intro { margin-bottom: 26px; }
+
+.pb-home-intro h2 {
+  margin: 0 0 5px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.pb-home-intro p { margin: 0; font-size: 13px; color: var(--pb-t2); }
+
+.pb-home-secao { margin-bottom: 26px; }
+
+.pb-home-secao > h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--pb-t3);
+}
+
+.pb-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(292px, 1fr));
+  gap: 13px;
+}
+
+.pb-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 16px 17px;
+  border: 1px solid var(--pb-linha);
+  border-radius: 13px;
+  background: var(--pb-surface);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.pb-card:hover {
+  border-color: var(--pb-linha-forte);
+  box-shadow: 0 1px 2px rgba(20, 23, 31, 0.04), 0 8px 20px -12px rgba(20, 23, 31, 0.2);
+  transform: translateY(-1px);
+}
+
+.pb-card-topo { display: flex; align-items: center; gap: 9px; }
+.pb-card-topo strong { font-size: 14px; font-weight: 700; letter-spacing: -0.2px; }
+
+.pb-card-tipo {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--pb-t3);
+  border: 1px solid var(--pb-linha);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+
+.pb-card p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--pb-t2); }
+
+.pb-card-origem {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  color: var(--pb-t3);
+}
+
+@media (max-width: 780px) {
+  .pb-sidebar {
+    position: absolute;
+    z-index: 30;
+    height: 100%;
+    box-shadow: 0 10px 40px -20px rgba(0, 0, 0, 0.4);
+  }
+}

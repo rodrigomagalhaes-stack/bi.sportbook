@@ -1,0 +1,45 @@
+{
+  "name": "bi-sportsbook",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Portal unificado das ferramentas de sportsbook da Esportiva Bet",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "monitor": "node --env-file=.env server/monitor/monitor.js",
+    "monitor:once": "node --env-file=.env server/monitor/monitor.js --once",
+    "monitor:serve": "node --env-file=.env server/monitor/server.js",
+    "monitor:start": "node --env-file=.env server/monitor/monitor.js --serve",
+    "monitor:discover": "node --env-file=.env server/monitor/discover.js",
+    "monitor:validate": "node --env-file=.env server/monitor/validate.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "papaparse": "^5.4.1",
+    "pg": "^8.13.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-router-dom": "^7.1.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "postcss-prefix-selector": "^2.1.0",
+    "vite": "^8.0.12",
+    "vitest": "^4.1.8"
+  }
+}

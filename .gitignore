@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.vercel/
+
+# segredos e estado local
+.env
+.env.*
+!.env.example
+data/
+
+# os projetos originais, antes de virarem módulos do portal
+_originais/
+
+*.local
+.DS_Store

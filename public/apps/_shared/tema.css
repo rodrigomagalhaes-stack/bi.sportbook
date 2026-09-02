@@ -1,0 +1,89 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Tema único das telas embutidas do portal.
+
+   Cada uma destas páginas nasceu como projeto separado, com a própria
+   paleta (três eram escuras, duas claras em tons diferentes). Em vez de
+   reescrever o CSS de cada uma, o `:root` de cada página passou a apontar
+   para as variáveis daqui: o CSS delas continua usando os próprios nomes
+   (--bg, --panel, --card...), só que as cores vêm todas deste arquivo.
+
+   Mexer numa cor aqui muda as cinco telas de uma vez. É também o mesmo
+   conjunto de valores do shell do portal (src/shell/shell.css), para a
+   moldura e o conteúdo não parecerem dois produtos diferentes.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* superfícies — a tela é um cinza claríssimo e os cartões é que são
+     brancos. Tudo branco no mesmo tom achatava a hierarquia: sem contraste
+     entre fundo e conteúdo, cartão, tabela e vazio viravam a mesma coisa. */
+  --pb-bg: #f4f5f7;
+  --pb-surface: #ffffff;
+  --pb-surface-2: #fafbfc;
+  --pb-surface-3: #f1f3f6;
+  --pb-linha: #e5e7eb;
+  --pb-linha-2: #d6d9df;
+
+  /* texto — 3 níveis */
+  --pb-t1: #14171f;
+  --pb-t2: #5b6270;
+  --pb-t3: #8b91a0;
+
+  /* marca */
+  --pb-acc: #ff4d1c;
+  --pb-acc-2: #e63f11;
+  --pb-acc-soft: #fff1ec;
+  --pb-acc-linha: #ffd9cd;
+
+  /* semânticas — sempre em par com o fundo suave correspondente */
+  --pb-verde: #12a150;      --pb-verde-soft: #e9f7ef;
+  --pb-vermelho: #dc2626;   --pb-vermelho-soft: #fdecea;
+  --pb-amarelo: #b8770a;    --pb-amarelo-soft: #fdf4e3;
+  --pb-azul: #2563eb;       --pb-azul-soft: #eaf1fe;
+  --pb-roxo: #7c3aed;       --pb-roxo-soft: #f2ecfe;
+
+  --pb-r: 8px;
+  --pb-r-sm: 6px;
+  --pb-sombra: 0 1px 2px rgba(20, 23, 31, .04);
+
+  --pb-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --pb-mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+}
+
+html, body {
+  background: var(--pb-bg);
+  color: var(--pb-t1);
+  font-family: var(--pb-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A moldura do portal já dá o título e o respiro; as páginas não precisam
+   repetir cabeçalho nem margem externa. */
+body { margin: 0; }
+
+/* `hidden` precisa vencer o `display` das regras de tabela e de flex — sem
+   isto, esconder um elemento pelo atributo não surte efeito. */
+[hidden] { display: none !important; }
+
+/* ── barra de rolagem discreta, igual em todas as telas ── */
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #d3d7de;
+  border: 2px solid var(--pb-bg);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover { background: #b9bfc9; }
+
+/* ── seleção e foco ── */
+
+::selection { background: var(--pb-acc-soft); color: var(--pb-acc-2); }
+
+:focus-visible {
+  outline: 2px solid var(--pb-acc);
+  outline-offset: 1px;
+}
+
+/* ── tipografia dos números ──
+   Colunas de valores só ficam comparáveis com dígitos de largura fixa. */
+.num, .val, td, th, .stat b, .kpi-val { font-variant-numeric: tabular-nums; }
