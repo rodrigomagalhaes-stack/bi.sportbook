@@ -115,6 +115,18 @@ export const secoes = [
         origem: 'analisador-bet-list',
       },
       {
+        to: '/utms',
+        label: 'Ranking de UTMs',
+        desc: 'Conta as UTMs do arquivo de bilhetes e mostra as que mais se repetem.',
+        tipo: 'nativo',
+      },
+      {
+        to: '/prefixador',
+        label: 'Prefixador de IDs',
+        desc: 'Cola a lista ou sobe a planilha e sai tudo com esportivabetbr_ na frente.',
+        tipo: 'nativo',
+      },
+      {
         to: '/freebets',
         exato: true,
         label: 'Freebets',
