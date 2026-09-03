@@ -1,0 +1,444 @@
+/* Chrome comum das ferramentas nativas do portal (Prefixador, Ranking de
+   UTMs, e o que vier): abas, blocos, área de upload, indicadores e tabela.
+   Diferente do Pick'em e do Welcome Boost, esses módulos nasceram dentro do
+   portal — usam as variáveis `--pb-*` do shell e o namespace `pf-`, então não
+   precisam do escopo por PostCSS do vite.config.js.
+
+   Estilo específico de um módulo mora no CSS dele; aqui só entra o que dois
+   ou mais compartilham. */
+
+.m-ferramenta {
+  flex: 1;
+  min-height: 0;
+}
+
+.pf-pagina {
+  padding: 26px 28px 44px;
+  font-family: var(--pb-font);
+  color: var(--pb-t1);
+}
+
+/* ── cabeçalho e barra de controles ── */
+
+.pf-intro { margin-bottom: 20px; }
+
+.pf-intro h2 {
+  margin: 0 0 5px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.pf-intro p {
+  margin: 0;
+  max-width: 72ch;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--pb-t2);
+}
+
+.pf-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.pf-abas {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--pb-linha);
+  border-radius: 10px;
+  background: var(--pb-surface-3);
+}
+
+.pf-aba {
+  padding: 7px 15px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--pb-t2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.pf-aba:hover { color: var(--pb-t1); }
+
+.pf-aba.ativa {
+  background: var(--pb-surface);
+  color: var(--pb-t1);
+  box-shadow: var(--pb-sombra);
+}
+
+.pf-prefixo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+  color: var(--pb-t2);
+}
+
+.pf-prefixo > label { font-weight: 600; }
+
+.pf-prefixo .pf-input { width: 190px; }
+
+.pf-exemplo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border: 1px solid var(--pb-acc-linha);
+  border-radius: 999px;
+  background: var(--pb-acc-soft);
+  font-family: var(--pb-mono);
+  font-size: 11.5px;
+  color: var(--pb-t2);
+}
+
+.pf-exemplo strong { color: var(--pb-acc-2); font-weight: 600; }
+.pf-seta { color: var(--pb-t3); }
+
+/* ── colunas ── */
+
+.pf-painel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.pf-coluna {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.pf-coluna.larga { grid-column: 1 / -1; }
+
+@media (max-width: 1080px) {
+  .pf-painel { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── blocos ── */
+
+.pf-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 17px;
+  border: 1px solid var(--pb-linha);
+  border-radius: 13px;
+  background: var(--pb-surface);
+  box-shadow: var(--pb-sombra);
+}
+
+.pf-bloco-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pf-bloco-topo h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.pf-hint {
+  font-size: 11.5px;
+  color: var(--pb-t3);
+  text-align: right;
+}
+
+/* ── entrada ── */
+
+.pf-textarea {
+  min-height: 320px;
+  padding: 12px 13px;
+  border: 1px solid var(--pb-linha-2);
+  border-radius: 9px;
+  background: var(--pb-surface-2);
+  color: var(--pb-t1);
+  font-family: var(--pb-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+.pf-textarea:focus,
+.pf-input:focus {
+  outline: none;
+  border-color: var(--pb-acc);
+  box-shadow: 0 0 0 3px var(--pb-acc-soft);
+}
+
+.pf-input {
+  padding: 7px 10px;
+  border: 1px solid var(--pb-linha-2);
+  border-radius: 8px;
+  background: var(--pb-surface);
+  color: var(--pb-t1);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+select.pf-input { cursor: pointer; }
+
+.pf-campos {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.pf-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pf-campo > span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--pb-t3);
+}
+
+.pf-radios {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.pf-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--pb-t2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.pf-check input { accent-color: var(--pb-acc); cursor: pointer; }
+
+/* ── ações ── */
+
+.pf-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pf-acoes-dir {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.pf-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--pb-linha-2);
+  border-radius: 8px;
+  background: var(--pb-surface);
+  color: var(--pb-t1);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.pf-btn:hover:not(:disabled) { background: var(--pb-surface-3); }
+
+.pf-btn.primario {
+  border-color: var(--pb-acc);
+  background: var(--pb-acc);
+  color: #fff;
+}
+
+.pf-btn.primario:hover:not(:disabled) { background: var(--pb-acc-2); }
+
+.pf-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.pf-link {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--pb-acc-2);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.pf-aviso {
+  margin: 0;
+  font-size: 12px;
+  color: var(--pb-verde);
+}
+
+.pf-erro {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--pb-vermelho);
+  border-radius: 8px;
+  background: var(--pb-vermelho-soft);
+  color: var(--pb-vermelho);
+  font-size: 12.5px;
+}
+
+/* ── área de upload ── */
+
+.pf-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 240px;
+  padding: 30px;
+  border: 2px dashed var(--pb-linha-2);
+  border-radius: 14px;
+  background: var(--pb-surface-2);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.pf-drop:hover,
+.pf-drop.arrastando {
+  border-color: var(--pb-acc);
+  background: var(--pb-acc-soft);
+}
+
+.pf-drop strong { font-size: 14.5px; }
+.pf-drop span { font-size: 12.5px; color: var(--pb-t2); }
+
+/* ── indicadores ── */
+
+.pf-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.pf-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 96px;
+  padding: 10px 13px;
+  border: 1px solid var(--pb-linha);
+  border-radius: 11px;
+  background: var(--pb-surface);
+}
+
+.pf-chip strong {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-chip span {
+  font-size: 11px;
+  color: var(--pb-t3);
+}
+
+.pf-chip.ok { border-color: #cdebd9; background: var(--pb-verde-soft); }
+.pf-chip.ok strong { color: var(--pb-verde); }
+
+.pf-chip.alerta { border-color: #f2e2be; background: var(--pb-amarelo-soft); }
+.pf-chip.alerta strong { color: var(--pb-amarelo); }
+
+.pf-chip.erro { border-color: #f7cfc9; background: var(--pb-vermelho-soft); }
+.pf-chip.erro strong { color: var(--pb-vermelho); }
+
+/* ── tabela ── */
+
+.pf-bloco-tabela { padding-bottom: 0; }
+
+.pf-tabela-rolagem {
+  max-height: 460px;
+  margin: 0 -17px;
+  overflow: auto;
+  border-top: 1px solid var(--pb-linha);
+}
+
+.pf-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.pf-tabela th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--pb-linha);
+  background: var(--pb-surface-3);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--pb-t3);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pf-tabela td {
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--pb-linha);
+  color: var(--pb-t2);
+  white-space: nowrap;
+}
+
+.pf-tabela tr:last-child td { border-bottom: 0; }
+.pf-tabela tbody tr:hover td { background: var(--pb-surface-2); }
+
+.pf-tabela .num {
+  width: 1%;
+  color: var(--pb-t3);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.pf-tabela .mono { font-family: var(--pb-mono); font-size: 12px; }
+.pf-tabela .forte { color: var(--pb-t1); font-weight: 600; }
+
+.pf-tag {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--pb-surface-3);
+  font-family: var(--pb-font);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--pb-t3);
+}
+
+.pf-tag.erro { background: var(--pb-vermelho-soft); color: var(--pb-vermelho); }
+
+.pf-vazio {
+  padding: 44px 20px;
+  border-top: 1px solid var(--pb-linha);
+  margin: 0 -17px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--pb-t3);
+}

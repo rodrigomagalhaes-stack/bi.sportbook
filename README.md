@@ -22,7 +22,7 @@ motivo que não tinha nada a ver com ele.
 
 | Ferramenta | Rota | Como está integrada | Projeto de origem |
 |---|---|---|---|
-| Boost Dashboard | `/boost-dashboard` | embutida | SportbookVsTipter |
+| Sportbook Vs. Tipster | `/boost-dashboard` | embutida | SportbookVsTipter |
 | Calculadora de Risco | `/calculadora-risco` | embutida | calculadora-de-risco |
 | Monitor Super Odds | `/monitor` | embutida (lê a API do deploy do monitor) | monitor-bilhetes-superodds |
 | Welcome Boost | `/welcome-boost` (+ 3 sub-rotas) | módulo React | welcome-boost-manager |
@@ -32,7 +32,7 @@ motivo que não tinha nada a ver com ele.
 
 **Módulo React** = componente montado dentro do portal, navegação instantânea.
 **Embutida** = a página HTML original, servida de `public/apps/` dentro de um
-iframe. São monolitos de JavaScript puro (o Boost Dashboard tem 2.500 linhas)
+iframe. São monolitos de JavaScript puro (o Sportbook Vs. Tipster tem 2.500 linhas)
 que já funcionam: reescrevê-los em React arriscaria a lógica sem mudar nada do
 que o usuário vê. O iframe ainda isola o CSS global de cada um. Migrar uma
 delas para módulo React depois é troca de uma linha em `src/shell/nav.js` mais
@@ -83,7 +83,7 @@ _originais/                os projetos como estavam antes de entrar no portal
 
 ## Um tema só para todas as telas
 
-Cada projeto chegou com a própria paleta: três escuras (Boost Dashboard,
+Cada projeto chegou com a própria paleta: três escuras (Sportbook Vs. Tipster,
 Analisador, Freebets), uma bege-quente (Welcome Boost), uma cinza-clara
 (Monitor) e o Pick'em em preto. Todas foram para o mesmo branco.
 

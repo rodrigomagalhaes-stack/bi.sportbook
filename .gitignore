@@ -17,3 +17,8 @@ _originais/
 .vercel
 .env*
 !.env.example
+
+# planilhas de trabalho que caem na raiz (têm dado de jogador)
+/*.csv
+/*.xlsx
+/*.xls

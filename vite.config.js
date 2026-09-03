@@ -48,6 +48,13 @@ export default defineConfig({
   },
   server: {
     port: parseInt(process.env.PORT || '5173'),
+    watch: {
+      // Planilha aberta no Excel fica travada pelo Windows, e o watcher do
+      // Vite morre com EBUSY ao tentar observá-la — derrubando o servidor
+      // inteiro. Nenhum csv/xlsx faz parte do bundle: são arquivos de trabalho
+      // que caem na pasta, então ficam fora da vigilância.
+      ignored: ['**/*.csv', '**/*.xlsx', '**/*.xls'],
+    },
   },
   test: {
     // _originais guarda os projetos como eram antes de virarem módulos; rodar
