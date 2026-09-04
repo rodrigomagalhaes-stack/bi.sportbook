@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { secoes, itemDaRota } from './nav.js'
 import Icone from './Icone.jsx'
+import BotaoTema from './BotaoTema.jsx'
 
 const semAcento = (s) =>
   s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -66,9 +67,15 @@ export default function Shell() {
           {filtradas.map((secao) => {
             const aberta = !fechadas.has(secao.id) || Boolean(busca)
             return (
-              <div key={secao.id} className="pb-secao">
+              <div
+                key={secao.id}
+                className="pb-secao"
+                style={{ '--secao-cor': `var(--${secao.cor})` }}
+              >
                 <button className="pb-secao-cab" onClick={() => alternarSecao(secao.id)}>
-                  <Icone nome={secao.icone} size={16} />
+                  <span className="pb-secao-ico">
+                    <Icone nome={secao.icone} size={15} />
+                  </span>
                   <span className="pb-secao-label">{secao.label}</span>
                   <span className={`pb-chevron${aberta ? ' aberta' : ''}`}>
                     <Icone nome="seta" size={13} />
@@ -85,7 +92,9 @@ export default function Shell() {
                         className={({ isActive }) => `pb-item${isActive ? ' ativo' : ''}`}
                         title={item.label}
                       >
-                        <span className="pb-item-marca" />
+                        <span className="pb-item-ico">
+                          <Icone nome={item.icone} size={16} />
+                        </span>
                         <span className="pb-item-txt">{item.label}</span>
                       </NavLink>
                     ))}
@@ -101,8 +110,13 @@ export default function Shell() {
 
       <div className="pb-principal">
         <header className="pb-topo">
-          <div className="pb-topo-titulo">
-            <span className="pb-topo-secao">{atual?.secao ?? 'Portal'}</span>
+          {/* Grupo / tela na mesma linha: o caminho até aqui lido de uma vez,
+              em vez de um rótulo empilhado sobre o título. */}
+          <div className="pb-crumb">
+            <span className="pb-crumb-secao">{atual?.secao ?? 'Portal'}</span>
+            <span className="pb-crumb-sep">
+              <Icone nome="seta" size={13} />
+            </span>
             <h1>{atual?.label ?? 'BI Sportsbook'}</h1>
           </div>
 
@@ -112,9 +126,10 @@ export default function Shell() {
                 sem autenticação
               </span>
             )}
+            <BotaoTema />
             <div className="pb-avatar" title={usuario?.email ?? 'Visitante'}>{iniciais}</div>
             {authConfigurado && (
-              <button className="pb-sair" onClick={sair} title="Sair">
+              <button className="pb-icon-btn" onClick={sair} title="Sair">
                 <Icone nome="sair" size={16} />
               </button>
             )}

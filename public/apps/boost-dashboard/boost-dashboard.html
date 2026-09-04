@@ -6,6 +6,10 @@
 <title>Sportbook Vs. Tipster · EsportivaBet</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/apps/_shared/tema.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/apps/_shared/tema.css">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -39,7 +43,7 @@
 .c-aum { color:var(--blue); }
 /* Sportsbook + Tipster somados (a operação de base, sem Welcome e sem aumento) */
 .c-sem { color:var(--purple); }
-body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; font-size:13px; min-height:100vh; }
+body { background:var(--bg); color:var(--text); font-family:var(--pb-font); font-size:13px; min-height:100vh; }
 
 /* TOPBAR */
 .topbar { background:var(--bg2); border-bottom:1px solid var(--border); padding:0 28px; height:52px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
@@ -92,8 +96,8 @@ body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui
 .btn-ghost { background:transparent; color:var(--t2); border:1px solid var(--bord2); }
 .btn-ghost:hover { color:var(--text); border-color:var(--t3); }
 .btn-ghost.active { border-color:var(--orange); color:var(--orange); }
-.btn-red { background:#3f0000; color:var(--red); border:1px solid #7f0000; }
-.btn-red:hover { background:#5f0000; }
+.btn-red { background:var(--pb-vermelho-soft); color:var(--pb-vermelho); border:0; }
+.btn-red:hover { background:var(--pb-vermelho); color:var(--pb-surface); }
 .btn-sm { padding:4px 10px; font-size:11px; }
 
 /* FILTRO SEGMENTADO POR CLASSIFICAÇÃO */

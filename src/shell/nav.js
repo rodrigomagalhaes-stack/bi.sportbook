@@ -10,9 +10,11 @@ export const secoes = [
     id: 'inicio',
     label: 'Início',
     icone: 'casa',
+    cor: 'text-faint',
     itens: [
       {
         to: '/',
+        icone: 'grade',
         exato: true,
         label: 'Visão Geral',
         desc: 'Atalhos para todas as ferramentas do portal.',
@@ -24,9 +26,11 @@ export const secoes = [
     id: 'sportsbook',
     label: 'Sportsbook',
     icone: 'bola',
+    cor: 'accent',
     itens: [
       {
         to: '/boost-dashboard',
+        icone: 'colunas',
         label: 'Sportbook Vs. Tipster',
         desc: 'Acompanhamento diário de boosts: apostado, risco e resultado por dia.',
         tipo: 'embutido',
@@ -35,6 +39,7 @@ export const secoes = [
       },
       {
         to: '/calculadora-risco',
+        icone: 'calculadora',
         label: 'Calculadora de Risco',
         desc: 'Stake × bilhetes × odd: quanto uma boost expõe antes de entrar no ar.',
         tipo: 'embutido',
@@ -43,6 +48,7 @@ export const secoes = [
       },
       {
         to: '/monitor',
+        icone: 'pulso',
         label: 'Monitor Super Odds',
         desc: 'Avisa no instante em que a trava de bilhetes de uma boost esgota.',
         tipo: 'embutido',
@@ -55,9 +61,11 @@ export const secoes = [
     id: 'welcome-boost',
     label: 'Welcome Boost',
     icone: 'raio',
+    cor: 'amber',
     itens: [
       {
         to: '/welcome-boost',
+        icone: 'raio',
         exato: true,
         label: 'Welcome Boosts',
         desc: 'Cadastro e acompanhamento das boosts de boas-vindas.',
@@ -66,6 +74,7 @@ export const secoes = [
       },
       {
         to: '/welcome-boost/mensal',
+        icone: 'calendario',
         label: 'Resumo Mensal',
         desc: 'Consolidado do mês por odd final, com os indicadores de apoio.',
         tipo: 'nativo',
@@ -73,6 +82,7 @@ export const secoes = [
       },
       {
         to: '/welcome-boost/relatorios',
+        icone: 'documento',
         label: 'Relatórios Gerais',
         desc: 'Números agregados de todos os relatórios salvos no período.',
         tipo: 'nativo',
@@ -80,6 +90,7 @@ export const secoes = [
       },
       {
         to: '/welcome-boost/ids-repetidos',
+        icone: 'copias',
         label: 'Ids Repetidos',
         desc: 'Jogadores que aparecem em mais de uma boost dentro do período.',
         tipo: 'nativo',
@@ -91,9 +102,11 @@ export const secoes = [
     id: 'campanhas',
     label: 'Campanhas',
     icone: 'trofeu',
+    cor: 'blue',
     itens: [
       {
         to: '/quiz',
+        icone: 'trofeu',
         label: 'Quiz',
         desc: 'Apuração de eventos de palpite: entradas, distribuição e premiação.',
         tipo: 'nativo',
@@ -105,9 +118,11 @@ export const secoes = [
     id: 'operacoes',
     label: 'Operações',
     icone: 'planilha',
+    cor: 'green',
     itens: [
       {
         to: '/analisador-bet-list',
+        icone: 'lista',
         label: 'Analisador Bet List',
         desc: 'Lê a planilha de apostas e resume por jogador, mercado e resultado.',
         tipo: 'embutido',
@@ -116,18 +131,21 @@ export const secoes = [
       },
       {
         to: '/utms',
+        icone: 'ranking',
         label: 'Ranking de UTMs',
         desc: 'Conta as UTMs do arquivo de bilhetes e mostra as que mais se repetem.',
         tipo: 'nativo',
       },
       {
         to: '/prefixador',
+        icone: 'etiqueta',
         label: 'Prefixador de IDs',
         desc: 'Cola a lista ou sobe a planilha e sai tudo com esportivabetbr_ na frente.',
         tipo: 'nativo',
       },
       {
         to: '/freebets',
+        icone: 'presente',
         exato: true,
         label: 'Freebets',
         desc: 'Gera a lista de PlayerIds aptos ao pagamento de freebet. Roda 100% no navegador.',

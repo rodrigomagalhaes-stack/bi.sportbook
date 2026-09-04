@@ -9,44 +9,81 @@
 
    Mexer numa cor aqui muda as cinco telas de uma vez. É também o mesmo
    conjunto de valores do shell do portal (src/shell/shell.css), para a
-   moldura e o conteúdo não parecerem dois produtos diferentes.
+   moldura e o conteúdo não parecerem dois produtos diferentes — mudou uma
+   cor aqui, mude lá também.
+
+   Os apelidos --pb-* existem nos dois temas: quem já os usava ganhou o tema
+   escuro sem tocar em regra nenhuma. Quem trocar de tema é o portal, e
+   tema.js (carregado no <head> de cada página) recebe a mudança.
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* superfícies — a tela é um cinza claríssimo e os cartões é que são
-     brancos. Tudo branco no mesmo tom achatava a hierarquia: sem contraste
-     entre fundo e conteúdo, cartão, tabela e vazio viravam a mesma coisa. */
-  --pb-bg: #f4f5f7;
+  /* ── tema claro (padrão) ── */
+  --pb-bg: #f6f5f3;
   --pb-surface: #ffffff;
-  --pb-surface-2: #fafbfc;
-  --pb-surface-3: #f1f3f6;
-  --pb-linha: #e5e7eb;
-  --pb-linha-2: #d6d9df;
+  --pb-surface-2: #f1efec;
+  --pb-surface-3: #e9e6e2;
+  --pb-linha: rgba(20, 18, 16, .08);
+  --pb-linha-2: rgba(20, 18, 16, .16);
 
   /* texto — 3 níveis */
-  --pb-t1: #14171f;
-  --pb-t2: #5b6270;
-  --pb-t3: #8b91a0;
+  --pb-t1: #221f1c;
+  --pb-t2: #5a5551;
+  --pb-t3: #6e6a66;
 
   /* marca */
-  --pb-acc: #ff4d1c;
-  --pb-acc-2: #e63f11;
-  --pb-acc-soft: #fff1ec;
-  --pb-acc-linha: #ffd9cd;
+  --pb-acc: #ff3d00;
+  --pb-acc-2: #e03400;
+  --pb-acc-soft: rgba(255, 61, 0, .09);
+  --pb-acc-linha: rgba(255, 61, 0, .16);
 
   /* semânticas — sempre em par com o fundo suave correspondente */
-  --pb-verde: #12a150;      --pb-verde-soft: #e9f7ef;
-  --pb-vermelho: #dc2626;   --pb-vermelho-soft: #fdecea;
-  --pb-amarelo: #b8770a;    --pb-amarelo-soft: #fdf4e3;
-  --pb-azul: #2563eb;       --pb-azul-soft: #eaf1fe;
-  --pb-roxo: #7c3aed;       --pb-roxo-soft: #f2ecfe;
+  --pb-verde: #15803d;      --pb-verde-soft: rgba(21, 128, 61, .09);
+  --pb-vermelho: #dc2626;   --pb-vermelho-soft: rgba(220, 38, 38, .09);
+  --pb-vermelho-linha: rgba(220, 38, 38, .28);
+  --pb-amarelo: #b45309;    --pb-amarelo-soft: rgba(180, 83, 9, .10);
+  --pb-azul: #2563eb;       --pb-azul-soft: rgba(37, 99, 235, .09);
+  --pb-roxo: #7c3aed;       --pb-roxo-soft: rgba(124, 58, 237, .09);
 
-  --pb-r: 8px;
-  --pb-r-sm: 6px;
-  --pb-sombra: 0 1px 2px rgba(20, 23, 31, .04);
+  --pb-r: 9px;
+  --pb-r-sm: 7px;
+  --pb-sombra: 0 1px 2px rgba(20, 18, 16, .05);
+  --pb-sombra-md: 0 14px 30px -16px rgba(20, 18, 16, .16);
 
-  --pb-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --pb-mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --pb-font: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --pb-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+
+  --pb-scroll: rgba(20, 18, 16, .16);
+}
+
+:root[data-theme="dark"] {
+  --pb-bg: #121314;
+  --pb-surface: #1a1c1e;
+  --pb-surface-2: #212325;
+  --pb-surface-3: #26292b;
+  --pb-linha: rgba(255, 255, 255, .07);
+  --pb-linha-2: rgba(255, 255, 255, .15);
+
+  --pb-t1: #f5f4f1;
+  --pb-t2: #a3a8a8;
+  --pb-t3: #8a9091;
+
+  --pb-acc: #ff3d00;
+  --pb-acc-2: #ff5c26;
+  --pb-acc-soft: rgba(255, 61, 0, .13);
+  --pb-acc-linha: rgba(255, 61, 0, .24);
+
+  --pb-verde: #3ecf98;      --pb-verde-soft: rgba(62, 207, 152, .13);
+  --pb-vermelho: #ff5470;   --pb-vermelho-soft: rgba(255, 84, 112, .13);
+  --pb-vermelho-linha: rgba(255, 84, 112, .34);
+  --pb-amarelo: #f5a524;    --pb-amarelo-soft: rgba(245, 165, 36, .13);
+  --pb-azul: #60a5fa;       --pb-azul-soft: rgba(96, 165, 250, .13);
+  --pb-roxo: #a855f7;       --pb-roxo-soft: rgba(168, 85, 247, .13);
+
+  --pb-sombra: 0 1px 2px rgba(0, 0, 0, .35);
+  --pb-sombra-md: 0 12px 28px -14px rgba(0, 0, 0, .55);
+
+  --pb-scroll: rgba(255, 255, 255, .15);
 }
 
 html, body {
@@ -69,21 +106,25 @@ body { margin: 0; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #d3d7de;
-  border: 2px solid var(--pb-bg);
-  border-radius: 6px;
+  background: var(--pb-scroll);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 8px;
 }
-::-webkit-scrollbar-thumb:hover { background: #b9bfc9; }
 
 /* ── seleção e foco ── */
 
-::selection { background: var(--pb-acc-soft); color: var(--pb-acc-2); }
+::selection { background: var(--pb-acc-linha); color: var(--pb-acc); }
 
 :focus-visible {
   outline: 2px solid var(--pb-acc);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 /* ── tipografia dos números ──
-   Colunas de valores só ficam comparáveis com dígitos de largura fixa. */
-.num, .val, td, th, .stat b, .kpi-val { font-variant-numeric: tabular-nums; }
+   Colunas de valores só ficam comparáveis com dígitos de largura fixa, e a
+   IBM Plex Mono é a fonte de número do sistema inteiro. */
+.num, .val, td, th, .stat b, .kpi-val {
+  font-family: var(--pb-mono);
+  font-variant-numeric: tabular-nums;
+}
