@@ -22,12 +22,15 @@ motivo que não tinha nada a ver com ele.
 
 | Ferramenta | Rota | Como está integrada | Projeto de origem |
 |---|---|---|---|
+| Recomendador de Boosts | `/recomendador` | módulo React | nasceu aqui |
 | Sportbook Vs. Tipster | `/boost-dashboard` | embutida | SportbookVsTipter |
 | Calculadora de Risco | `/calculadora-risco` | embutida | calculadora-de-risco |
 | Monitor Super Odds | `/monitor` | embutida (lê a API do deploy do monitor) | monitor-bilhetes-superodds |
 | Welcome Boost | `/welcome-boost` (+ 3 sub-rotas) | módulo React | welcome-boost-manager |
 | Quiz | `/quiz` | módulo React | pickem-dashboard |
 | Analisador Bet List | `/analisador-bet-list` | embutida | analisador-bet-list |
+| Ranking de UTMs | `/utms` | módulo React | nasceu aqui |
+| Prefixador de IDs | `/prefixador` | módulo React | nasceu aqui |
 | Freebets | `/freebets` | embutida | freebetspagamentos |
 
 **Módulo React** = componente montado dentro do portal, navegação instantânea.
@@ -78,6 +81,236 @@ _originais/                os projetos como estavam antes de entrar no portal
 2. Módulo React: `src/modules/<nome>/`, com um `index.jsx` que embrulha o app
    em `<div className="m-<nome>">`, mais o escopo de CSS em `vite.config.js` e
    a rota em `src/App.jsx`.
+
+---
+
+## Recomendador de Boosts
+
+Escolhido um jogo, a tela entrega **cinco dicas por vertente** — Single e Bet
+Builder — ordenadas pelo resultado esperado em reais. A pergunta que ela responde
+é "o que eu subo neste jogo".
+
+### Duas vertentes, cinco dicas, um número
+
+A primeira versão tinha quatro critérios de ordenação (resultado, volume, margem,
+custo) e uma tabela única de 160 linhas. Era um painel de análise, não uma lista
+de dicas. Os outros três critérios são as **partes** do primeiro: escolher entre
+eles é responder metade da pergunta. Volume alto com margem negativa é prejuízo
+em escala; margem alta sem volume não rende nada. Ficou um número só, em reais,
+que é a linguagem em que a boost é decidida — com odd, custo e volume embaixo de
+cada dica, menores, para conferir de onde ele veio.
+
+**Single** consegue sugerir mercado novo: a odd de cada seleção é publicada,
+então dá para calcular a margem de uma boost que ainda não existe. Cada dica vem
+marcada `subir` ou `já no ar`.
+
+**Bet Builder só lista o que já está no ar.** Não é limitação de esforço: para
+avaliar uma múltipla é preciso o preço que a casa daria à combinação, e
+multiplicar as pernas não serve. Medindo 33 múltiplas publicadas, a razão entre o
+preço publicado e o produto das pernas foi de **0,54 a 1,12** conforme as pernas
+se correlacionam — mediana 0,98, mas com essa dispersão. Como a margem inteira
+de uma boost vive em poucos pontos percentuais, um preço inventado com 45% de
+erro possível não decide nada. As que já estão no ar trazem o preço real, e essas
+a tela avalia.
+
+### O que ele ranqueia — e o que ele recusa a ranquear
+
+O caminho óbvio seria somar o net que cada mercado deu no histórico e ordenar
+por ele. **Ele está errado**, e o código diz isso em três lugares para ninguém
+o reimplementar por engano.
+
+O net de uma boost é uma amostra de variância enorme: um bilhete de odd 5.60 ou
+paga 4,6 vezes a stake ou não paga nada. Com as 3 ou 4 vezes que um mercado
+aparece no histórico, o net acumulado dele é quase inteiramente sorte —
+ranquear por ali recomenda o mercado que por acaso perdeu duas seguidas e evita
+o que por acaso ganhou. O que se separa em sinal e ruído:
+
+| | |
+|---|---|
+| **Volume** | previsível. Que gols puxa mais que desarmes, e que um clássico puxa mais que um jogo de meio de tabela, se repete. Vem da mediana de stake da família × o porte do confronto. |
+| **Margem** | conhecida **antes** de a boost ir ao ar, sem histórico nenhum: está na distância entre a odd original e a turbinada, uma vez tirada a margem que a odd já embutia. |
+| **Net** | o resultado sorteado dessas duas. Aparece em cada dica como conferência, sempre ao lado do tamanho da amostra, nunca no ranking. |
+
+O score é `margem esperada × volume esperado`, o resultado esperado em reais.
+Nenhuma das duas metades sozinha responde: boost com margem ótima que ninguém
+aposta não rende nada, e boost que puxa muito volume com margem negativa é
+prejuízo em escala.
+
+### O que é do jogo e o que é generalizado
+
+Vale saber onde a recomendação é sob medida e onde ela é média de todo mundo:
+
+| | |
+|---|---|
+| **Margem e custo** | 100% daquele jogo. Saem das odds reais do evento — `basePrice` e `price` de cada boost, e o grupo de de-vig do mercado dela. Dois jogos nunca dão o mesmo número. |
+| **Volume** | mediana da **família** (generalizada: quanto "total de gols" costuma puxar, em qualquer jogo) × **fator do confronto** (específico: quanto as boosts destes times puxaram, contra o jogo mediano). |
+
+Ou seja: a ordem entre mercados dentro de um jogo é dele; o formato dessa ordem
+se repete entre jogos, escalado pelo porte do confronto. E se os times não têm
+histórico, o fator vale 1 e o volume vira puramente generalizado — é por isso
+que a tela mostra o fator e de quantas boosts ele saiu, em vez de escondê-lo.
+
+Ajustar isso mais fino (mediana por família **e** campeonato, por exemplo) é
+questão de ter amostra: hoje ela não daria.
+
+### De onde vêm os números
+
+- **Lista de jogos** — `/api/recomendador/jogos` chama o `GetEvents` do Altenar:
+  o calendário inteiro, 1.665 jogos de futebol cobrindo umas seis semanas. A
+  primeira versão listava a vitrine (`superodds-betcards`), que só conhece jogo
+  que **já** tem Super Odds publicada — 14 num dia normal. Quem ia montar a
+  boost de amanhã não achava o jogo, que é justamente quando a tela serviria. A
+  vitrine continua sendo lida, mas só para marcar quais jogos já têm boost no
+  ar. O campo de ID do evento na tela ignora o catálogo e abre qualquer jogo,
+  inclusive fora dessas seis semanas — ele aceita o número puro, o final do
+  endereço (`le-16462691`) ou a URL inteira do site colada.
+- **Candidatos e odds** — `/api/recomendador/evento` chama o `GetEventDetails`
+  do Altenar, o mesmo que o Monitor já usava. A resposta passa de 2 MB (354
+  mercados e 8.716 odds num PSG x Monaco) e o servidor a enxuga para ~25 KB.
+  Passa pelo backend, e não direto do navegador, por dois motivos: o tamanho, e
+  o 403 que o Altenar devolve quando o Referer é o domínio da Esportiva.
+- **Histórico de volume** — `boost_days`, a mesma tabela que o Sportbook Vs.
+  Tipster grava a cada importação. Lida do navegador, assinada com o usuário
+  logado (`src/lib/supabaseRest.js`).
+- **Dicas marcadas** — `boost_dicas`, criada por `supabase/boost_dicas.sql`.
+  Precisa ser aplicada à mão antes de o botão "subi essa" funcionar; sem ela a
+  tela avisa e o resto continua.
+- **Nada de novo no ambiente.** Reaproveita `ALTENAR_URL`, `ALTENAR_INTEGRATION`
+  e `BASE_URL`, todas com valor padrão em `server/monitor/config.js`.
+
+### O de-vig é por coluna, não por mercado
+
+`desktopOddIds` é uma **grade**: cada linha é um desfecho e cada **coluna** um
+conjunto complementar. No 1x2 são três linhas de uma coluna só, e a coluna é o
+mercado inteiro. Em "Total (mais/menos) Chutes a Gol PSG" são duas linhas (Mais
+/ Menos) e cinco colunas (4.5 … 8.5): a coluna do 7.5 é `{Mais de 7.5, Menos de
+7.5}` e só ela soma ~1.
+
+Somando o mercado inteiro daria 5,4 de probabilidade implícita — cinco pares
+empilhados — e a probabilidade sairia cinco vezes menor que a real. Duas outras
+armadilhas na mesma conta:
+
+- **Chance dupla soma ~2**, não ~1: cada seleção contém dois dos três desfechos.
+  Lida como cobertura simples, viraria 110% de margem. O código arredonda a soma
+  para achar quantas vezes o grupo cobre o espaço e divide por isso.
+- **Marcador e resultado correto** não fecham em inteiro nenhum (0,26 numa
+  medição). Ali não há de-vig possível: a linha sai marcada `estimado`.
+- **E a soma às vezes engana.** "Marcador - Fulano" traz Primeiro / Último /
+  Qualq. Altura, três coisas que acontecem juntas; num jogo real elas somaram
+  1,03 e teriam passado como um mercado de 3% de margem, inventando a
+  probabilidade da seleção. Por isso existe `GRUPO_NAO_COMPLEMENTAR` em
+  `lib/score.js`: marcador, assistências e resultado correto vão direto para a
+  estimativa, sem passar pela checagem numérica que os aceitaria por acidente.
+
+### Múltipla é ancorada na odd da casa
+
+A margem de uma múltipla **não** sai do produto das pernas de-vigadas. Pernas do
+mesmo jogo são correlacionadas — se sai gol, sai escanteio — e o produto
+subestima muito a chance real de o bilhete ganhar: uma dupla de 4.00 aparecia
+com 63% de margem para a casa, número que não existe em livro nenhum.
+
+A âncora é a odd combinada que a **própria casa** publicou, com a margem das
+pernas descontada dela: `p = (1/basePrice) × Π 1/(1 + overround da perna)`. A
+casa já resolveu a correlação ao precificar a múltipla, e `basePrice` traz o
+ajuste pronto. A mesma dupla dá 11%.
+
+### O limite mais importante: 3 de 4 boosts têm a margem ASSUMIDA
+
+Numa auditoria de **94 boosts reais** em 10 jogos, só **24% fecharam com a
+margem medida**. O resto caiu nos 7% assumidos por perna. O motivo é estrutural,
+não um bug:
+
+| | |
+|---|---|
+| pernas individuais | 43% medidas |
+| boosts de perna única | 22% medidas |
+| múltiplas (2+ pernas) | 33% medidas |
+
+Perna única de-viga MENOS que múltipla porque as boosts simples caem quase todas
+em mercado de jogador — marcador, assistências, "Chutes a Gol - Fulano: Mais de
+0.5 / 1.5 / 2.5". Essa escada de limiar não tem o "menos de" do outro lado, então
+não existe conjunto complementar para tirar a margem. Múltipla precisa de todas
+as pernas boas, mas as pernas dela costumam ser de mercado principal.
+
+**O viés tem direção conhecida.** Mercado de jogador carrega mais margem que os
+7% assumidos; assumindo menos, o sistema calcula uma probabilidade maior que a
+real e reporta *menos* margem e *mais* custo do que existe. Erra para o lado
+conservador — mas empurra sistematicamente as boosts de mercado de jogador para
+baixo no ranking.
+
+A tela mostra **% das boosts com margem medida** entre os indicadores, e cada
+linha estimada leva a marca. Fechar essa lacuna depende de saber a margem que a
+casa realmente pratica nesses mercados — informação de operação, não do feed.
+
+### Mercado combinado tem família própria
+
+"Total e ambas equipes marcam" e "1x2 e total" são uma seleção só no site — boost
+Single, portanto —, mas não puxam o volume do mercado de que levam o nome. Sem
+família própria eles herdavam o histórico do componente: o primeiro caía em
+"ambas" e recebia o volume do Ambas Marcam simples. Numa prévia com dados reais
+isso bastou para os combinados ocuparem as cinco primeiras dicas de Single em
+dois jogos de três — justamente a parte da tela em que se age.
+
+A regra que os separa está em `lib/familias.js`: o nome precisa juntar duas
+coisas com " e " **e** casar em duas famílias diferentes. Só a segunda condição
+não bastaria ("Total de gols" casa em gols e em "outros totais" sem ser
+combinado); só a primeira também não.
+
+### O placar: o que ele previu contra o que aconteceu
+
+Marcar **subi essa** numa dica grava a previsão em `boost_dicas` (SQL em
+`supabase/boost_dicas.sql`, aplicado à mão no SQL Editor como os outros). Quando
+o dia é importado no Sportbook Vs. Tipster, o realizado chega em `boost_days` e
+os dois se encontram por **jogo + família** — não por nome de mercado, porque o
+Altenar escreve "Total de gols" e a planilha escreve "Total Goals Over/Under".
+
+**A previsão é gravada, não recalculada.** Recalcular na hora da comparação
+avaliaria o modelo de hoje contra o resultado de ontem, e a mediana de volume já
+teria absorvido aquele mesmo jogo — ele sempre pareceria certo. Os campos
+`prev_*` guardam o que a tela dizia no momento da escolha e não mudam mais.
+
+O placar separa dois erros que amadurecem em ritmos muito diferentes, e por isso
+nunca são somados num "acerto de X%":
+
+| | |
+|---|---|
+| **Erro de volume** | vira sinal com poucas observações. Se gols sai 3× abaixo do realizado três vezes seguidas, isso não é sorte: é a mediana da família fora de lugar. É o número que justifica mexer no modelo. |
+| **Erro de resultado** | precisa de dezenas de observações. Uma boost de odd alta ou paga muito ou não paga nada; errar o net de uma delas não diz nada. Aparece sempre com o n do lado. |
+
+Duas armadilhas que o código evita de propósito:
+
+- **Viés de seleção.** Se só as marcadas entrassem, nunca se saberia o que as
+  boosts recusadas teriam rendido e o recomendador pareceria melhor do que é. O
+  bloco "rodaram nos mesmos jogos e não foram marcadas" é a contraprova, e sai
+  de graça: o `boost_days` já tem todas.
+- **Contagem dupla.** Marcar "Bragantino" e "Empate" é marcar duas seleções do
+  mesmo mercado, e as duas casam com a MESMA linha do `boost_days` — que agrega
+  por evento+mercado, sem separar seleção. Cada dica continua mostrando o
+  realizado do mercado dela (marcado `do mercado` na tela), mas nos totais cada
+  linha entra uma vez só. Sem isso, numa simulação, R$ 44 mil de um 1x2 contavam
+  duas vezes e o placar inteiro inflava.
+
+### Aprender vem depois de medir
+
+O sistema **não** se auto-ajusta, e isso é decisão, não pendência. Com cinco ou
+dez observações, "aprender" é decorar sorte — o mesmo motivo pelo qual o ranking
+se recusa a usar o lucro passado. Metade do aprendizado já acontece sozinha: o
+volume é a mediana de `boost_days`, então todo relatório importado melhora a
+estimativa sem código novo. O placar é o que diz **se ela acertou** — e só
+depois de o erro de volume se mostrar sistemático é que vale calibrar, e aí um
+parâmetro de cada vez.
+
+### Quando ele degrada, ele avisa
+
+O histórico nomeia mercados como a planilha da provedora exporta ("Total Goals
+Over/Under"); o Altenar, do jeito dele ("Total (mais/menos) Chutes a Gol PSG").
+Os dois caem numa **família** (`lib/familias.js`, regras em português e inglês)
+porque casar string com string acharia quase nada e cada rótulo viraria uma
+amostra de tamanho 1.
+
+Se a provedora mudar os rótulos, a estimativa de volume degradaria em silêncio.
+Por isso a tela mostra sempre **% do histórico classificado** e, no diagnóstico,
+os rótulos que ficaram de fora — cada um é um candidato a virar regra nova.
 
 ---
 

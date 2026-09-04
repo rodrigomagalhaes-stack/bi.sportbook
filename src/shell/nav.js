@@ -29,6 +29,13 @@ export const secoes = [
     cor: 'accent',
     itens: [
       {
+        to: '/recomendador',
+        icone: 'alvo',
+        label: 'Recomendador de Boosts',
+        desc: 'Ranqueia as boosts de um jogo por margem esperada × volume que o mercado costuma puxar.',
+        tipo: 'nativo',
+      },
+      {
         to: '/boost-dashboard',
         icone: 'colunas',
         label: 'Sportbook Vs. Tipster',

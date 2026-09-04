@@ -1,0 +1,293 @@
+/* Estilo próprio do Recomendador de Boosts. O chrome (blocos, abas, tabela,
+   indicadores, chips) vem de shell/ferramenta.css; aqui só mora o que é desta
+   tela — a grade de controles, o cartão do melhor candidato e as marcações de
+   sinal nas colunas de dinheiro. */
+
+/* ── seletor de jogo ─────────────────────────────────────────────────────────
+   Três formas de chegar no mesmo lugar: a busca por texto (o caminho normal),
+   a lista já filtrada, e o ID do evento — que é o único que funciona para jogo
+   fora do calendário de seis semanas. */
+
+.rb-busca { margin-bottom: 16px; }
+
+.rb-busca-campos {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(260px, 1.4fr) minmax(190px, auto);
+  align-items: end;
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .rb-busca-campos { grid-template-columns: minmax(0, 1fr); }
+}
+
+.rb-busca-campos .pf-input { width: 100%; box-sizing: border-box; }
+
+.rb-id { display: flex; gap: 8px; }
+.rb-id .pf-input { min-width: 0; }
+.rb-id .pf-btn { flex: none; }
+
+.rb-busca-rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 18px;
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pb-linha);
+}
+
+.rb-busca-rodape .pf-hint { max-width: 68ch; }
+.rb-busca-rodape strong { color: var(--pb-acc); }
+
+.rb-erro-id { margin: 12px 0 0; }
+
+/* Qual jogo está de fato na tela. Fica na barra, entre o seletor e o modo de
+   ordenação, porque é a resposta à pergunta "abriu o que eu pedi?". */
+.rb-carregado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 13px;
+  color: var(--pb-t2);
+}
+
+.rb-carregado strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--pb-t1);
+  letter-spacing: -0.2px;
+}
+
+.rb-carregado .pf-tag { margin-left: 0; font-family: var(--pb-mono); }
+
+.rb-controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  margin-bottom: 16px;
+}
+
+.rb-controles .pf-campo { flex-direction: row; align-items: center; gap: 10px; }
+.rb-controles .pf-hint { max-width: 62ch; }
+
+/* ── blocos de vertente ──────────────────────────────────────────────────────
+   Single e Bet Builder, um bloco cada, cinco dicas cada. A tela responde "o que
+   eu subo neste jogo", e essas são as duas formas de subir. */
+
+.rb-vertente { margin-bottom: 16px; }
+
+.rb-vertente .pf-bloco-topo h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.rb-vertente-cont {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--pb-t3);
+}
+
+.rb-vertente-nota { margin: 12px 0 0; max-width: 78ch; }
+
+.rb-dicas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rb-dica {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid var(--pb-linha);
+}
+
+.rb-dica:first-child { border-top: 0; padding-top: 4px; }
+
+/* A primeira é a resposta do bloco; as outras quatro são as alternativas. */
+.rb-dica.destaque .rb-dica-nome { font-size: 17px; }
+.rb-dica.destaque .rb-dica-valor strong { font-size: 27px; }
+
+.rb-dica-pos {
+  flex: none;
+  width: 22px;
+  padding-top: 2px;
+  font-family: var(--pb-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pb-t3);
+}
+
+.rb-dica.destaque .rb-dica-pos { color: var(--pb-acc); }
+
+.rb-dica-corpo { flex: 1; min-width: 0; }
+
+.rb-dica-nome {
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.rb-dica-mercado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--pb-t3);
+}
+
+.rb-dica-mercado .pf-tag { margin-left: 0; }
+
+/* De onde o número saiu. Menor e mais apagado de propósito: quem decide olha o
+   valor em reais primeiro, e só desce aqui para conferir. */
+.rb-dica-detalhe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 16px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--pb-t3);
+}
+
+.rb-dica-detalhe strong { color: var(--pb-t2); font-weight: 600; }
+.rb-dica-detalhe .mono { font-family: var(--pb-mono); font-variant-numeric: tabular-nums; }
+.rb-fraco { color: var(--pb-vermelho); }
+
+.rb-dica-valor {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  padding-top: 1px;
+  min-width: 118px;
+}
+
+.rb-dica-valor strong {
+  font-family: var(--pb-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+}
+
+.rb-dica-valor.ok strong { color: var(--pb-verde); }
+.rb-dica-valor.erro strong { color: var(--pb-vermelho); }
+
+.rb-dica-valor span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--pb-t3);
+}
+
+@media (max-width: 720px) {
+  .rb-dica { flex-wrap: wrap; }
+  .rb-dica-valor { align-items: flex-start; padding-left: 36px; }
+}
+
+/* ── marcar a dica ─────────────────────────────────────────────────────────── */
+
+.rb-dica-fim {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 118px;
+}
+
+.rb-marcar {
+  padding: 5px 11px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.rb-marcar.marcada {
+  background: var(--pb-verde-soft);
+  color: var(--pb-verde);
+}
+
+/* ── placar ──────────────────────────────────────────────────────────────────
+   Volume e resultado lado a lado, nunca somados num "acerto de X%": eles
+   amadurecem em ritmos diferentes e juntá-los esconderia justamente o número
+   que dá para agir (o de volume) atrás do que ainda é ruído (o de resultado). */
+
+.rb-placar-topo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px 32px;
+  margin-bottom: 20px;
+}
+
+.rb-placar-metrica {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rb-placar-val {
+  font-family: var(--pb-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+}
+
+.rb-placar-val .ok { color: var(--pb-verde); }
+.rb-placar-val .erro { color: var(--pb-vermelho); }
+.rb-placar-metrica .pf-hint { max-width: 46ch; }
+
+.rb-contraprova {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--pb-linha);
+}
+
+.rb-contraprova h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rb-contraprova .pf-hint { display: block; max-width: 80ch; margin-bottom: 10px; }
+
+/* ── notas e diagnóstico ── */
+
+.rb-notas {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--pb-t2);
+  max-width: 88ch;
+}
+
+.rb-notas strong { color: var(--pb-t1); font-weight: 600; }
+.rb-notas .pf-tag { margin-left: 0; }
+
+.rb-diagnostico {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pb-linha);
+}
+
+.rb-diagnostico code {
+  font-family: var(--pb-mono);
+  font-size: 11.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--pb-surface-3);
+}

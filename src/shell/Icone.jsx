@@ -26,6 +26,7 @@ export default function Icone({ nome, size = 17 }) {
 
     // ferramentas
     grade: <><rect x="3.5" y="3.5" width="7" height="7" rx="1.6" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.6" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.6" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.6" /></>,
+    alvo: <><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="0.6" /></>,
     colunas: <><path d="M4 20V11M10 20V4M16 20v-6M22 20H2" /></>,
     calculadora: <><rect x="4.5" y="2.5" width="15" height="19" rx="2.5" /><path d="M8 6.5h8" /><path d="M8.5 11h.01M12 11h.01M15.5 11h.01M8.5 14.5h.01M12 14.5h.01M15.5 14.5h.01M8.5 18h.01M12 18h.01M15.5 18h.01" /></>,
     pulso: <><path d="M2.5 12h4l2.5-6.5 4 13L15.5 12h6" /></>,
