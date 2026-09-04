@@ -172,6 +172,9 @@ questão de ter amostra: hoje ela não daria.
 - **Histórico de volume** — `boost_days`, a mesma tabela que o Sportbook Vs.
   Tipster grava a cada importação. Lida do navegador, assinada com o usuário
   logado (`src/lib/supabaseRest.js`).
+- **Dicas marcadas** — `boost_dicas`, criada por `supabase/boost_dicas.sql`.
+  Precisa ser aplicada à mão antes de o botão "subi essa" funcionar; sem ela a
+  tela avisa e o resto continua.
 - **Nada de novo no ambiente.** Reaproveita `ALTENAR_URL`, `ALTENAR_INTEGRATION`
   e `BASE_URL`, todas com valor padrão em `server/monitor/config.js`.
 
@@ -252,6 +255,50 @@ A regra que os separa está em `lib/familias.js`: o nome precisa juntar duas
 coisas com " e " **e** casar em duas famílias diferentes. Só a segunda condição
 não bastaria ("Total de gols" casa em gols e em "outros totais" sem ser
 combinado); só a primeira também não.
+
+### O placar: o que ele previu contra o que aconteceu
+
+Marcar **subi essa** numa dica grava a previsão em `boost_dicas` (SQL em
+`supabase/boost_dicas.sql`, aplicado à mão no SQL Editor como os outros). Quando
+o dia é importado no Sportbook Vs. Tipster, o realizado chega em `boost_days` e
+os dois se encontram por **jogo + família** — não por nome de mercado, porque o
+Altenar escreve "Total de gols" e a planilha escreve "Total Goals Over/Under".
+
+**A previsão é gravada, não recalculada.** Recalcular na hora da comparação
+avaliaria o modelo de hoje contra o resultado de ontem, e a mediana de volume já
+teria absorvido aquele mesmo jogo — ele sempre pareceria certo. Os campos
+`prev_*` guardam o que a tela dizia no momento da escolha e não mudam mais.
+
+O placar separa dois erros que amadurecem em ritmos muito diferentes, e por isso
+nunca são somados num "acerto de X%":
+
+| | |
+|---|---|
+| **Erro de volume** | vira sinal com poucas observações. Se gols sai 3× abaixo do realizado três vezes seguidas, isso não é sorte: é a mediana da família fora de lugar. É o número que justifica mexer no modelo. |
+| **Erro de resultado** | precisa de dezenas de observações. Uma boost de odd alta ou paga muito ou não paga nada; errar o net de uma delas não diz nada. Aparece sempre com o n do lado. |
+
+Duas armadilhas que o código evita de propósito:
+
+- **Viés de seleção.** Se só as marcadas entrassem, nunca se saberia o que as
+  boosts recusadas teriam rendido e o recomendador pareceria melhor do que é. O
+  bloco "rodaram nos mesmos jogos e não foram marcadas" é a contraprova, e sai
+  de graça: o `boost_days` já tem todas.
+- **Contagem dupla.** Marcar "Bragantino" e "Empate" é marcar duas seleções do
+  mesmo mercado, e as duas casam com a MESMA linha do `boost_days` — que agrega
+  por evento+mercado, sem separar seleção. Cada dica continua mostrando o
+  realizado do mercado dela (marcado `do mercado` na tela), mas nos totais cada
+  linha entra uma vez só. Sem isso, numa simulação, R$ 44 mil de um 1x2 contavam
+  duas vezes e o placar inteiro inflava.
+
+### Aprender vem depois de medir
+
+O sistema **não** se auto-ajusta, e isso é decisão, não pendência. Com cinco ou
+dez observações, "aprender" é decorar sorte — o mesmo motivo pelo qual o ranking
+se recusa a usar o lucro passado. Metade do aprendizado já acontece sozinha: o
+volume é a mediana de `boost_days`, então todo relatório importado melhora a
+estimativa sem código novo. O placar é o que diz **se ela acertou** — e só
+depois de o erro de volume se mostrar sistemático é que vale calibrar, e aí um
+parâmetro de cada vez.
 
 ### Quando ele degrada, ele avisa
 

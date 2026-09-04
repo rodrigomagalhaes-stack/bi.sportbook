@@ -18,6 +18,13 @@ const tokenDoUsuario = async () => {
   return data.session?.access_token ?? null
 }
 
+/** Quem está logado, para carimbar autoria em quem grava. */
+export async function usuarioAtual() {
+  if (!supabase) return null
+  const { data } = await supabase.auth.getSession()
+  return data.session?.user?.email ?? null
+}
+
 export async function rest(caminho, { method = 'GET', body, headers = {} } = {}) {
   if (!URL || !CHAVE) throw new Error('Supabase não configurado neste ambiente.')
   const token = await tokenDoUsuario()

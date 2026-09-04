@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import Resumo from '../../shell/Resumo.jsx'
 import { achatar, diagnostico, fatorDoJogo, porFamilia } from './lib/historico.js'
-import { buscarDias } from './lib/dados.js'
+import { apagarDica, buscarDias, buscarDicas, salvarDica } from './lib/dados.js'
+import { apurar, compartilhamento, naoMarcadas, resumo } from './lib/comparacao.js'
 import { TOP, VERTENTES, ranquear } from './lib/score.js'
 import { filtrarJogos, idDoTexto } from './lib/busca.js'
 
@@ -49,6 +50,10 @@ export default function App() {
   const [lift, setLift] = useState(0.1)
   // Vertentes abertas além do top 5.
   const [expandidas, setExpandidas] = useState([])
+  const [dicas, setDicas] = useState([])
+  const [erroDicas, setErroDicas] = useState('')
+  // Chave da dica sendo gravada, para o botão não aceitar dois cliques.
+  const [gravando, setGravando] = useState(null)
   const [verDiagnostico, setVerDiagnostico] = useState(false)
 
   // Os jogos em promoção e o histórico não dependem um do outro: as duas
@@ -72,6 +77,10 @@ export default function App() {
     buscarDias()
       .then((dias) => vivo && setHistorico(achatar(dias)))
       .catch((e) => vivo && setErroHistorico(e.message))
+
+    buscarDicas()
+      .then((d) => vivo && setDicas(d || []))
+      .catch((e) => vivo && setErroDicas(e.message))
 
     return () => {
       vivo = false
@@ -173,6 +182,69 @@ export default function App() {
 
   const alternarExpansao = (id) =>
     setExpandidas((v) => (v.includes(id) ? v.filter((x) => x !== id) : [...v, id]))
+
+  // As dicas deste jogo, para o botão saber se já está marcada.
+  const marcadaDe = (c) =>
+    dicas.find(
+      (d) =>
+        String(d.event_id) === String(dados?.evento?.eventId) &&
+        d.mercado === c.mercado &&
+        d.selecao === c.rotulo,
+    )
+
+  /**
+   * Marca ou desmarca uma dica.
+   *
+   * A previsão vai gravada como a tela a mostra AGORA, e não é recalculada na
+   * comparação: recalcular avaliaria o modelo de hoje contra o resultado de
+   * ontem — e a mediana de volume já teria absorvido aquele mesmo jogo, então
+   * ele sempre pareceria certo.
+   */
+  const alternarMarca = async (c, posicao) => {
+    if (gravando) return
+    setGravando(c.chave)
+    setErroDicas('')
+    const jaMarcada = marcadaDe(c)
+    try {
+      if (jaMarcada) {
+        await apagarDica(jaMarcada.id)
+        setDicas((v) => v.filter((d) => d.id !== jaMarcada.id))
+      } else {
+        const [nova] = await salvarDica({
+          event_id: dados.evento.eventId,
+          event_name: dados.evento.eventName,
+          champ_name: dados.evento.champName || null,
+          event_start: dados.evento.startDate,
+          vertente: c.vertente,
+          familia: c.familia,
+          mercado: c.mercado,
+          selecao: c.rotulo,
+          item_id: c.itemId ?? null,
+          no_ar: c.noAr,
+          odd_base: c.basePrice,
+          odd_boost: c.price,
+          prev_volume: c.volume.stake,
+          prev_margem: c.margem.margemBoost,
+          prev_custo: c.margem.custo,
+          prev_resultado: c.ev,
+          prev_amostra: c.volume.n,
+          prev_fator: porte.fator,
+          margem_estimada: c.margem.estimado,
+          posicao,
+        })
+        if (nova) setDicas((v) => [nova, ...v])
+      }
+    } catch (e) {
+      setErroDicas(e.message)
+    } finally {
+      setGravando(null)
+    }
+  }
+
+  // ── o placar ────────────────────────────────────────────────────────────────
+  const apuradas = useMemo(() => apurar(dicas, linhas), [dicas, linhas])
+  const placar = useMemo(() => resumo(apuradas), [apuradas])
+  const foraDoPlacar = useMemo(() => naoMarcadas(dicas, linhas), [dicas, linhas])
 
   return (
     <div className="pf-pagina">
@@ -290,6 +362,12 @@ export default function App() {
       </div>
 
       {erro && <p className="pf-erro">{erro}</p>}
+      {erroDicas && (
+        <p className="pf-aviso">
+          Não consegui gravar a marcação: {erroDicas} Se a tabela ainda não existe, aplique{' '}
+          <code>supabase/boost_dicas.sql</code> no SQL Editor do Supabase.
+        </p>
+      )}
       {erroHistorico && (
         <p className="pf-aviso">
           Não consegui ler o histórico de volume: {erroHistorico} O ranking continua mostrando
@@ -359,9 +437,19 @@ export default function App() {
                 candidatos={porVertente[v.id] || []}
                 expandido={expandidas.includes(v.id)}
                 onExpandir={() => alternarExpansao(v.id)}
+                marcadaDe={marcadaDe}
+                onMarcar={alternarMarca}
+                gravando={gravando}
               />
             ))
           )}
+
+          <Placar
+            placar={placar}
+            apuradas={apuradas}
+            fora={foraDoPlacar}
+            temHistorico={Boolean(historico)}
+          />
 
           <div className="pf-bloco">
             <div className="pf-bloco-topo">
@@ -455,7 +543,7 @@ export default function App() {
 //
 // A primeira linha ganha corpo maior: é a resposta do bloco, e ler cinco linhas
 // iguais para descobrir qual é a primeira seria trabalho à toa.
-function BlocoVertente({ vertente, candidatos, expandido, onExpandir }) {
+function BlocoVertente({ vertente, candidatos, expandido, onExpandir, marcadaDe, onMarcar, gravando }) {
   const visiveis = expandido ? candidatos : candidatos.slice(0, TOP)
   const paraSubir = candidatos.filter((c) => !c.noAr).length
 
@@ -483,7 +571,15 @@ function BlocoVertente({ vertente, candidatos, expandido, onExpandir }) {
         <>
           <ol className="rb-dicas">
             {visiveis.map((c, i) => (
-              <Dica key={c.chave} c={c} posicao={i + 1} destaque={i === 0} />
+              <Dica
+                key={c.chave}
+                c={c}
+                posicao={i + 1}
+                destaque={i === 0}
+                marcada={Boolean(marcadaDe(c))}
+                gravando={gravando === c.chave}
+                onMarcar={() => onMarcar(c, i + 1)}
+              />
             ))}
           </ol>
           {!paraSubir && (
@@ -498,7 +594,7 @@ function BlocoVertente({ vertente, candidatos, expandido, onExpandir }) {
 // Uma dica. O número grande é o resultado esperado em reais — é a linguagem em
 // que a boost é decidida. Odd, custo e volume ficam embaixo, menores, para
 // conferir de onde o valor veio sem competir com ele.
-function Dica({ c, posicao, destaque }) {
+function Dica({ c, posicao, destaque, marcada, gravando, onMarcar }) {
   return (
     <li className={`rb-dica${destaque ? ' destaque' : ''}`}>
       <span className="rb-dica-pos">{posicao}</span>
@@ -540,10 +636,185 @@ function Dica({ c, posicao, destaque }) {
         </div>
       </div>
 
-      <div className={`rb-dica-valor ${sinal(c.ev)}`}>
-        <strong>{moeda(c.ev)}</strong>
-        <span>resultado esperado</span>
+      <div className="rb-dica-fim">
+        <div className={`rb-dica-valor ${sinal(c.ev)}`}>
+          <strong>{moeda(c.ev)}</strong>
+          <span>resultado esperado</span>
+        </div>
+        {/* Marcar congela esta previsão. Depois, quando o dia for importado no
+            Sportbook Vs. Tipster, o placar compara o que foi previsto aqui com
+            o que a boost de fato puxou. */}
+        <button
+          type="button"
+          className={`pf-btn rb-marcar${marcada ? ' marcada' : ''}`}
+          onClick={onMarcar}
+          disabled={gravando}
+          title={
+            marcada
+              ? 'Esta dica está no placar. Clique para tirar.'
+              : 'Marque se você subiu esta boost — a previsão fica gravada e o placar compara com o resultado.'
+          }
+        >
+          {gravando ? '…' : marcada ? '✓ subi essa' : 'subi essa'}
+        </button>
       </div>
     </li>
+  )
+}
+
+// ── O PLACAR ─────────────────────────────────────────────────────────────────
+// O que o recomendador previu contra o que aconteceu.
+//
+// Volume e resultado aparecem separados, e não somados num "acerto de X%": eles
+// amadurecem em ritmos muito diferentes. O erro de volume vira sinal com poucas
+// observações e é o que justifica mexer no modelo; o de resultado precisa de
+// dezenas antes de significar algo, porque uma boost de odd alta ou paga muito
+// ou não paga nada.
+function Placar({ placar, apuradas, fora, temHistorico }) {
+  const dividida = compartilhamento(apuradas)
+  if (!placar.total) {
+    return (
+      <div className="pf-bloco">
+        <div className="pf-bloco-topo">
+          <h3>Placar do recomendador</h3>
+        </div>
+        <p className="pf-vazio">
+          Marque <strong>subi essa</strong> nas dicas que você levar para o site. A previsão fica
+          gravada como está agora e, quando você importar o dia no Sportbook Vs. Tipster, esta
+          seção compara com o que a boost puxou de verdade.
+        </p>
+      </div>
+    )
+  }
+
+  const fechadas = apuradas.filter((a) => a.status === 'apurada')
+  const erro = placar.erroVolumeMediano
+
+  return (
+    <div className="pf-bloco">
+      <div className="pf-bloco-topo">
+        <h3>Placar do recomendador</h3>
+        <span className="pf-hint">
+          {placar.apuradas} apuradas · {placar.aguardando} aguardando o relatório
+          {placar.naoApareceram > 0 && ` · ${placar.naoApareceram} não apareceram no relatório`}
+        </span>
+      </div>
+
+      {!temHistorico && (
+        <p className="pf-aviso">
+          Sem o histórico de <em>boost_days</em> carregado não há com o que comparar.
+        </p>
+      )}
+
+      <div className="rb-placar-topo">
+        <div className="rb-placar-metrica">
+          <span className="rb-mini-lbl">Erro de volume (mediana)</span>
+          <strong className="rb-placar-val">
+            {erro == null ? '—' : `${erro.toFixed(2).replace('.', ',')}×`}
+          </strong>
+          <span className="pf-hint">
+            {erro == null
+              ? 'nenhuma dica apurada ainda'
+              : erro > 1
+                ? `puxou ${erro.toFixed(2).replace('.', ',')}× o previsto — a estimativa está baixa`
+                : `puxou ${erro.toFixed(2).replace('.', ',')}× o previsto — a estimativa está alta`}
+            {placar.amostraVolume > 0 && ` · ${placar.amostraVolume} observações`}
+          </span>
+        </div>
+
+        <div className="rb-placar-metrica">
+          <span className="rb-mini-lbl">Resultado previsto × realizado</span>
+          <strong className="rb-placar-val">
+            {moeda(placar.previstoTotal)} <span className="pf-seta">→</span>{' '}
+            <span className={sinal(placar.realizadoTotal)}>{moeda(placar.realizadoTotal)}</span>
+          </strong>
+          <span className="pf-hint">
+            {placar.apuradas < 20
+              ? `${placar.apuradas} boosts é pouco para isto significar algo — a variância de uma boost é maior que a diferença.`
+              : 'amostra já dá para comparar.'}
+          </span>
+        </div>
+      </div>
+
+      {fechadas.length > 0 && (
+        <div className="pf-tabela-rolagem">
+          <table className="pf-tabela">
+            <thead>
+              <tr>
+                <th>Dica</th>
+                <th>Jogo</th>
+                <th className="num">Volume previsto</th>
+                <th className="num">Volume real</th>
+                <th className="num">Erro</th>
+                <th className="num">Resultado previsto</th>
+                <th className="num">Net real</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fechadas.map((a) => (
+                <tr key={a.dica.id}>
+                  <td>
+                    <span className="forte">{a.dica.selecao}</span>
+                    <span className="rb-cand-sub">{a.dica.mercado}</span>
+                  </td>
+                  <td>{a.dica.event_name}</td>
+                  <td className="num mono">{moeda(a.dica.prev_volume)}</td>
+                  <td className="num mono">
+                    {moeda(a.realizado.stake)}
+                    {dividida.get(a.chaveRealizado) > 1 && (
+                      <span
+                        className="pf-tag"
+                        title="O relatório agrega por evento e mercado, sem separar a seleção. Este volume é do mercado inteiro, dividido com outra dica marcada — no placar acima ele conta uma vez só."
+                      >
+                        do mercado
+                      </span>
+                    )}
+                  </td>
+                  <td className="num mono">
+                    {a.erroVolume == null ? '—' : `${a.erroVolume.toFixed(2).replace('.', ',')}×`}
+                  </td>
+                  <td className="num mono">{moeda(a.dica.prev_resultado)}</td>
+                  <td className={`num mono forte ${sinal(a.realizado.net)}`}>
+                    {moeda(a.realizado.net)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {fora.length > 0 && (
+        <div className="rb-contraprova">
+          <h4>Rodaram nos mesmos jogos e não foram marcadas</h4>
+          <p className="pf-hint">
+            A contraprova. Se só as marcadas entrassem no placar, nunca se saberia o que as boosts
+            que o recomendador deixou de fora teriam rendido — e ele pareceria melhor do que é.
+          </p>
+          <div className="pf-tabela-rolagem">
+            <table className="pf-tabela">
+              <thead>
+                <tr>
+                  <th>Mercado</th>
+                  <th>Jogo</th>
+                  <th className="num">Stake</th>
+                  <th className="num">Net</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fora.slice(0, 10).map((l, i) => (
+                  <tr key={`${l.date}-${l.event}-${l.market}-${i}`}>
+                    <td>{l.market || '(sem nome)'}</td>
+                    <td>{l.event}</td>
+                    <td className="num mono">{moeda(l.stake)}</td>
+                    <td className={`num mono forte ${sinal(l.net)}`}>{moeda(l.net)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

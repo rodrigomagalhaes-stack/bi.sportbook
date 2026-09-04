@@ -195,6 +195,72 @@
   .rb-dica-valor { align-items: flex-start; padding-left: 36px; }
 }
 
+/* ── marcar a dica ─────────────────────────────────────────────────────────── */
+
+.rb-dica-fim {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 118px;
+}
+
+.rb-marcar {
+  padding: 5px 11px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.rb-marcar.marcada {
+  background: var(--pb-verde-soft);
+  color: var(--pb-verde);
+}
+
+/* ── placar ──────────────────────────────────────────────────────────────────
+   Volume e resultado lado a lado, nunca somados num "acerto de X%": eles
+   amadurecem em ritmos diferentes e juntá-los esconderia justamente o número
+   que dá para agir (o de volume) atrás do que ainda é ruído (o de resultado). */
+
+.rb-placar-topo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px 32px;
+  margin-bottom: 20px;
+}
+
+.rb-placar-metrica {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rb-placar-val {
+  font-family: var(--pb-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+}
+
+.rb-placar-val .ok { color: var(--pb-verde); }
+.rb-placar-val .erro { color: var(--pb-vermelho); }
+.rb-placar-metrica .pf-hint { max-width: 46ch; }
+
+.rb-contraprova {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--pb-linha);
+}
+
+.rb-contraprova h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rb-contraprova .pf-hint { display: block; max-width: 80ch; margin-bottom: 10px; }
+
 /* ── notas e diagnóstico ── */
 
 .rb-notas {
