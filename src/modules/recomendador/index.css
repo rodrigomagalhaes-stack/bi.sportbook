@@ -145,6 +145,25 @@
 
 .rb-dica-mercado .pf-tag { margin-left: 0; }
 
+/* As seleções do mercado sugerido. Todas dão a mesma margem e o mesmo volume —
+   a escolha entre elas é de quem conhece o jogo, não do modelo. */
+.rb-dica-opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 7px;
+  font-size: 12px;
+  color: var(--pb-t2);
+}
+
+.rb-dica-opcoes .mono {
+  font-family: var(--pb-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--pb-t1);
+}
+
+.rb-dica-opcoes .pf-seta { margin: 0 2px; }
+
 /* De onde o número saiu. Menor e mais apagado de propósito: quem decide olha o
    valor em reais primeiro, e só desce aqui para conferir. */
 .rb-dica-detalhe {

@@ -135,36 +135,73 @@ function candidatoDeBoost(b, { estatisticas, fator, maxStake }) {
 }
 
 /**
- * Monta um candidato a partir de um mercado que ainda NÃO tem boost.
- * `lift` é a turbinada pretendida (0.10 = +10% na odd), já que não existe odd
- * turbinada para ler.
+ * Monta UM candidato por mercado que ainda não tem boost.
+ *
+ * ── POR QUE UM POR MERCADO, E NÃO UM POR SELEÇÃO ─────────────────────────────
+ * Com uma turbinada uniforme, a margem é a MESMA para todas as seleções do
+ * mercado. A conta se abre assim:
+ *
+ *     p          = (1 / base) / (1 + overround)
+ *     price      = base × (1 + lift)
+ *     margemBoost = 1 − p × price = 1 − (1 + lift) / (1 + overround)
+ *
+ * O `base` se cancela. Boostar o favorito a 1.58 ou o azarão a 12.00 entrega
+ * exatamente a mesma margem, e o volume também é igual — ele vem da família, que
+ * é a mesma. As seleções de um mercado são, para este modelo, indistinguíveis.
+ *
+ * Antes cada seleção virava uma linha, e o top 5 de Single aparecia com "1x2
+ * Faltas" três vezes seguidas (Bragantino, Empate, Bahia): três linhas com o
+ * mesmo número, ocupando o lugar de outros mercados. As diferenças de 8,7 / 8,8
+ * / 8,8 pp que apareciam eram só o arredondamento da odd turbinada a duas casas.
+ *
+ * Então a dica é do MERCADO, e as seleções vão junto como opções — quem escolhe
+ * qual delas turbinar é quem conhece o jogo. O modelo não tem o que dizer aí: o
+ * histórico de volume é por família, nunca por seleção.
  */
-function candidatoDeMercado(mercado, selecao, { estatisticas, fator, lift }) {
+function candidatoDeMercado(mercado, { estatisticas, fator, lift }) {
   const familia = familiaDe(mercado.market)
-  const [leg] = marcarComplementaridade([
-    {
-      market: mercado.market,
-      selection: selecao.selection,
-      price: selecao.price,
-      precosDoMercado: selecao.precosDoMercado,
-    },
-  ])
-  const price = Number((selecao.price * (1 + lift)).toFixed(2))
-  const margem = avaliarBoost({ basePrice: selecao.price, price, legs: [leg] })
-  if (!margem) return null
   const volume = volumeEsperado(estatisticas.get(familia.id), fator)
+
+  const opcoes = mercado.selecoes
+    .map((selecao) => {
+      const [leg] = marcarComplementaridade([
+        {
+          market: mercado.market,
+          selection: selecao.selection,
+          price: selecao.price,
+          precosDoMercado: selecao.precosDoMercado,
+        },
+      ])
+      const price = Number((selecao.price * (1 + lift)).toFixed(2))
+      const margem = avaliarBoost({ basePrice: selecao.price, price, legs: [leg] })
+      return margem ? { selecao, leg, price, margem } : null
+    })
+    .filter(Boolean)
+
+  if (!opcoes.length) return null
+
+  // Todas empatam na margem; o desempate é só o arredondamento da odd. A de
+  // melhor margem representa o mercado, e as outras seguem como opção.
+  const melhor = opcoes.reduce((a, b) => (b.margem.margemBoost > a.margem.margemBoost ? b : a))
+
   return {
-    chave: `sug-${mercado.marketId}-${selecao.selectionId}`,
+    chave: `sug-${mercado.marketId}`,
     tipo: 'sugestao',
-    rotulo: selecao.selection,
+    rotulo: mercado.market,
     mercado: mercado.market,
-    legs: [leg],
+    // A seleção não é escolha do modelo: vai a lista inteira para a tela.
+    opcoes: opcoes.map((o) => ({
+      selecao: o.selecao.selection,
+      basePrice: o.selecao.price,
+      price: o.price,
+    })),
+    legs: [melhor.leg],
     familia: familia.id,
     familiaLabel: familia.label,
-    basePrice: selecao.price,
-    price,
+    basePrice: melhor.selecao.price,
+    price: melhor.price,
     betsLimit: 0,
-    margem,
+    margem: melhor.margem,
     volume,
     exposicao: null,
   }
@@ -223,7 +260,7 @@ export function ranquear(dados, { estatisticas, fator, lift = 0.1, maxStake = 0,
   const sugestoes = incluirSugestoes
     ? (dados?.mercados || [])
         .filter((m) => !jaTemBoost.has(m.market))
-        .flatMap((m) => m.selecoes.map((s) => candidatoDeMercado(m, s, ctx)))
+        .map((m) => candidatoDeMercado(m, ctx))
         .filter(Boolean)
     : []
 

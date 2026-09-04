@@ -76,11 +76,46 @@ describe('volumeEsperado', () => {
 describe('ranquear', () => {
   const opcoes = { estatisticas, fator: 1, maxStake: 50 }
 
-  it('monta um candidato por boost existente e por seleção sugerida', () => {
+  it('monta um candidato por boost existente e UM por mercado sugerido', () => {
+    // "Total cartões" tem duas seleções e vira uma dica só: com turbinada
+    // uniforme as duas dão a mesma margem e o mesmo volume, então duas linhas
+    // seriam a mesma dica duplicada ocupando o lugar de outro mercado.
     const r = ranquear(dadosDoEvento, opcoes)
     expect(r.qtdBoosts).toBe(2)
-    expect(r.qtdSugestoes).toBe(2)
-    expect(r.candidatos).toHaveLength(4)
+    expect(r.qtdSugestoes).toBe(1)
+    expect(r.candidatos).toHaveLength(3)
+  })
+
+  it('a dica do mercado carrega as seleções como opções', () => {
+    const r = ranquear(dadosDoEvento, opcoes)
+    const sug = r.candidatos.find((c) => c.tipo === 'sugestao')
+    expect(sug.rotulo).toBe('Total cartões')
+    expect(sug.opcoes.map((o) => o.selecao)).toEqual(['Mais de 3.5', 'Menos de 3.5'])
+  })
+
+  it('todas as seleções de um mercado dão a MESMA margem', () => {
+    // É o que justifica a dica ser do mercado e não de uma seleção:
+    //   p           = (1/base) / (1 + overround)
+    //   price       = base × (1 + lift)
+    //   margemBoost = 1 − p × price = 1 − (1 + lift) / (1 + overround)
+    // O `base` se cancela. Na conta exata as margens são idênticas.
+    const lift = 0.1
+    const overround = 0.07
+    const exata = (base) => 1 - (1 / base / (1 + overround)) * (base * (1 + lift))
+    expect(exata(2)).toBeCloseTo(exata(12), 12)
+
+    // Na implementação sobra um resíduo: a odd turbinada é arredondada a duas
+    // casas, e é só isso que faz a tela mostrar 8,7 / 8,8 / 8,8 pp em vez de
+    // três números iguais.
+    //
+    // O tamanho do resíduo é limitado: o arredondamento erra no máximo meio
+    // centavo na odd, o que sobre a menor odd que vira sugestão (1.15) dá
+    // ~0,4 pp de margem. Meio ponto percentual é o teto — o suficiente para
+    // confirmar que a diferença é ruído de exibição, não margem de verdade.
+    const r = ranquear(dadosDoEvento, { ...opcoes, lift })
+    const sug = r.candidatos.find((c) => c.tipo === 'sugestao')
+    const margens = sug.opcoes.map((o) => 1 - (1 / o.basePrice / (1 + overround)) * o.price)
+    expect(Math.max(...margens) - Math.min(...margens)).toBeLessThan(0.005)
   })
 
   it('ordena por resultado esperado, que é margem × volume', () => {
@@ -137,8 +172,9 @@ describe('ranquear', () => {
 
   it('sugestão nasce da turbinada pretendida sobre a odd atual', () => {
     const r = ranquear(dadosDoEvento, { ...opcoes, lift: 0.2 })
-    const sug = r.candidatos.find((c) => c.tipo === 'sugestao' && c.basePrice === 2)
-    expect(sug.price).toBe(2.4)
+    const sug = r.candidatos.find((c) => c.tipo === 'sugestao')
+    const duasCinco = sug.opcoes.find((o) => o.basePrice === 2)
+    expect(duasCinco.price).toBe(2.4)
     expect(sug.margem.custo).toBeGreaterThan(0)
   })
 
@@ -162,7 +198,7 @@ describe('ranquear', () => {
       ],
     }
     const r = ranquear(dados, opcoes)
-    expect(r.candidatos.filter((c) => c.tipo === 'sugestao' && c.mercado === 'Total cartões').length).toBeGreaterThan(0)
+    expect(r.candidatos.filter((c) => c.tipo === 'sugestao' && c.mercado === 'Total cartões').length).toBe(1)
   })
 
   it('não sugere mercado que já tem boost SIMPLES no jogo', () => {

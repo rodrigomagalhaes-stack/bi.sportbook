@@ -602,7 +602,7 @@ function Dica({ c, posicao, destaque, marcada, gravando, onMarcar }) {
       <div className="rb-dica-corpo">
         <div className="rb-dica-nome">{c.rotulo}</div>
         <div className="rb-dica-mercado">
-          {c.mercado}
+          {c.opcoes ? c.familiaLabel : c.mercado}
           {c.noAr ? (
             <span className="pf-tag">já no ar</span>
           ) : (
@@ -617,12 +617,33 @@ function Dica({ c, posicao, destaque, marcada, gravando, onMarcar }) {
           )}
         </div>
 
+        {/* Numa sugestão, TODAS as seleções do mercado dão a mesma margem e o
+            mesmo volume — a conta de `candidatoDeMercado` mostra que o preço
+            base se cancela. Então a tela não escolhe uma: lista as opções e
+            deixa a escolha com quem conhece o jogo. */}
+        {c.opcoes && (
+          <div className="rb-dica-opcoes">
+            {c.opcoes.map((o) => (
+              <span key={o.selecao}>
+                {o.selecao}{' '}
+                <strong className="mono">
+                  {odd(o.basePrice)}
+                  <span className="pf-seta">→</span>
+                  {odd(o.price)}
+                </strong>
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="rb-dica-detalhe">
-          <span>
-            odd <strong className="mono">{odd(c.basePrice)}</strong>
-            <span className="pf-seta"> → </span>
-            <strong className="mono">{odd(c.price)}</strong>
-          </span>
+          {!c.opcoes && (
+            <span>
+              odd <strong className="mono">{odd(c.basePrice)}</strong>
+              <span className="pf-seta"> → </span>
+              <strong className="mono">{odd(c.price)}</strong>
+            </span>
+          )}
           <span>
             entrega <strong className="mono">{pp(c.margem.custo)}</strong> de margem
           </span>
