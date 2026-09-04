@@ -242,6 +242,31 @@ A tela mostra **% das boosts com margem medida** entre os indicadores, e cada
 linha estimada leva a marca. Fechar essa lacuna depende de saber a margem que a
 casa realmente pratica nesses mercados — informação de operação, não do feed.
 
+### Uma dica por mercado, não por seleção
+
+O top 5 de Single chegou a aparecer com "1x2 Faltas" três vezes seguidas —
+Bragantino, Empate e Bahia —, três linhas com o mesmo número ocupando o lugar de
+outros mercados. Não era só feio: é que **as seleções de um mercado são
+indistinguíveis para este modelo**.
+
+```
+p           = (1 / base) / (1 + overround)
+price       = base × (1 + lift)
+margemBoost = 1 − p × price = 1 − (1 + lift) / (1 + overround)
+```
+
+O `base` se cancela. Turbinar o favorito a 1.58 ou o azarão a 12.00 entrega
+exatamente a mesma margem, e o volume também é igual — ele vem da família, que é
+a mesma. As diferenças de 8,7 / 8,8 / 8,8 pp que apareciam na tela eram só o
+arredondamento da odd turbinada a duas casas (no máximo ~0,4 pp, para a menor
+odd que vira sugestão).
+
+Então a sugestão é do **mercado**, com as seleções listadas junto como opções.
+Escolher qual turbinar é de quem conhece o jogo: o modelo não tem o que dizer
+aí, porque o histórico de volume é por família e nunca por seleção. Boosts que
+já estão no ar continuam uma linha cada — ali as odds turbinadas são reais e a
+casa não aplicou um lift uniforme.
+
 ### Mercado combinado tem família própria
 
 "Total e ambas equipes marcam" e "1x2 e total" são uma seleção só no site — boost
