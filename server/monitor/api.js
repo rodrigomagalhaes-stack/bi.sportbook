@@ -22,7 +22,7 @@ import { config } from './config.js';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
-async function getJson(url, { timeoutMs = 20000, retries = 2, referer = config.baseUrl + '/' } = {}) {
+export async function getJson(url, { timeoutMs = 20000, retries = 2, referer = config.baseUrl + '/' } = {}) {
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
     const ac = new AbortController();
