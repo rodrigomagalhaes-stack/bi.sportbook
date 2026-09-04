@@ -4,6 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BI Sportsbook · Esportiva Bet</title>
+
+    <!-- Antes de qualquer CSS que pinte: sem isto a tela nasce clara e pisca
+         para o escuro no primeiro frame de quem escolheu escuro. A chave
+         `eb-theme` e a mesma das telas embutidas (public/apps/_shared/tema.js),
+         entao a escolha vale para o portal inteiro, iframes inclusive. -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('eb-theme')
+          var theme = saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          document.documentElement.setAttribute('data-theme', theme)
+        } catch (e) {}
+      })()
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    />
   </head>
   <body>
     <div id="root"></div>

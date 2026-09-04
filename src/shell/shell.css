@@ -1,54 +1,137 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   Shell do portal. Todo seletor daqui usa o prefixo `pb-` e as variáveis
-   `--pb-*`: os módulos trazem CSS global próprio (e conflitante entre si),
-   que o vite.config.js escopa em `.m-<modulo>`. Manter os dois namespaces
-   separados é o que permite Pick'em (tema escuro) e Welcome Boost (tema
-   claro) coexistirem no mesmo bundle.
+   Shell do portal.
+
+   Duas camadas de nome convivem aqui de propósito:
+
+   1. Os tokens do design system (--bg, --surface, --accent, --text...), que
+      são a fonte da verdade e existem nos dois temas.
+   2. Os apelidos --pb-*, que os módulos React (ferramenta.css) e as cinco
+      telas embutidas já consomem. Cada um aponta para um token acima, então
+      trocar uma cor é mexer em um lugar só, e o tema escuro chega de graça
+      em quem já usava o apelido.
+
+   Os mesmos valores estão em public/apps/_shared/tema.css, que veste as telas
+   dentro do iframe — elas rodam em outro documento e não enxergam este
+   arquivo. Mudou uma cor aqui, mude lá também.
+
+   Todo seletor deste arquivo usa o prefixo `pb-`: os módulos trazem CSS
+   global próprio (e conflitante entre si), que o vite.config.js escopa em
+   `.m-<modulo>`. Manter os dois namespaces separados é o que permite Quiz
+   (tema escuro) e Welcome Boost (tema claro) coexistirem no mesmo bundle.
    ───────────────────────────────────────────────────────────────────────── */
 
-/* Paleta única do portal. Os mesmos valores estão em
-   public/apps/_shared/tema.css, que veste as telas embutidas — elas rodam
-   dentro de um iframe e não enxergam este arquivo. Mudou uma cor aqui, mude
-   lá também: os dois juntos é que fazem moldura e conteúdo parecerem o mesmo
-   produto. */
 :root {
-  --pb-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --pb-mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  /* ── tema claro (padrão no :root) ── */
+  --bg: #f6f5f3;
+  --bg-sidebar: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f1efec;
+  --surface-3: #e9e6e2;
 
-  /* superfícies */
-  --pb-bg: #f4f5f7;
-  --pb-surface: #ffffff;
-  --pb-surface-2: #fafbfc;
-  --pb-surface-3: #f1f3f6;
-  --pb-linha: #e5e7eb;
-  --pb-linha-2: #d6d9df;
-  --pb-linha-forte: #d6d9df;
-  --pb-ativo-bg: #f1f3f6;
+  --border: rgba(20, 18, 16, .08);
+  --border-strong: rgba(20, 18, 16, .16);
 
-  /* texto */
-  --pb-t1: #14171f;
-  --pb-t2: #5b6270;
-  --pb-t3: #8b91a0;
+  --text: #221f1c;
+  --text-dim: #5a5551;
+  --text-faint: #6e6a66;
 
-  /* marca */
-  --pb-acc: #ff4d1c;
-  --pb-acc-2: #e63f11;
-  --pb-acc-soft: #fff1ec;
-  --pb-acc-linha: #ffd9cd;
+  --accent: #ff3d00;
+  --accent-strong: #e03400;
+  --accent-soft: rgba(255, 61, 0, .09);
+  --accent-soft-strong: rgba(255, 61, 0, .16);
 
-  /* semânticas — sempre em par com o fundo suave correspondente */
-  --pb-verde: #12a150;      --pb-verde-soft: #e9f7ef;
-  --pb-vermelho: #dc2626;   --pb-vermelho-soft: #fdecea;
-  --pb-amarelo: #b8770a;    --pb-amarelo-soft: #fdf4e3;
-  --pb-azul: #2563eb;       --pb-azul-soft: #eaf1fe;
-  --pb-roxo: #7c3aed;       --pb-roxo-soft: #f2ecfe;
+  --green: #15803d;   --green-soft: rgba(21, 128, 61, .09);
+  --red: #dc2626;     --red-soft: rgba(220, 38, 38, .09);
+  --red-line: rgba(220, 38, 38, .28);
+  --amber: #b45309;   --amber-soft: rgba(180, 83, 9, .10);
 
-  --pb-r: 8px;
-  --pb-sombra: 0 1px 2px rgba(20, 23, 31, .04);
+  /* Azul e roxo não estão no design system: existem porque as telas
+     embutidas já categorizam boosts com eles (aumento, sem aumento). Ficam
+     definidos nos dois temas para não quebrarem no escuro — e nada novo
+     deveria passar a usá-los. */
+  --blue: #2563eb;    --blue-soft: rgba(37, 99, 235, .09);
+  --purple: #7c3aed;  --purple-soft: rgba(124, 58, 237, .09);
 
-  --pb-sidebar-w: 268px;
-  --pb-sidebar-w-min: 68px;
-  --pb-topo-h: 62px;
+  --shadow-sm: 0 1px 2px rgba(20, 18, 16, .05);
+  --shadow-md: 0 14px 30px -16px rgba(20, 18, 16, .16);
+  --shadow-lg: 0 24px 48px -24px rgba(20, 18, 16, .26);
+
+  --sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+
+  --r-sm: 7px;
+  --r: 9px;
+  --r-lg: 14px;
+
+  --pb-sidebar-w: 264px;
+  --pb-sidebar-w-min: 66px;
+  --pb-topo-h: 60px;
+}
+
+:root[data-theme="dark"] {
+  --bg: #121314;
+  --bg-sidebar: #0e0f10;
+  --surface: #1a1c1e;
+  --surface-2: #212325;
+  --surface-3: #26292b;
+
+  --border: rgba(255, 255, 255, .07);
+  --border-strong: rgba(255, 255, 255, .15);
+
+  --text: #f5f4f1;
+  --text-dim: #a3a8a8;
+  --text-faint: #8a9091;
+
+  --accent: #ff3d00;
+  --accent-strong: #ff5c26;
+  --accent-soft: rgba(255, 61, 0, .13);
+  --accent-soft-strong: rgba(255, 61, 0, .24);
+
+  --green: #3ecf98;   --green-soft: rgba(62, 207, 152, .13);
+  --red: #ff5470;     --red-soft: rgba(255, 84, 112, .13);
+  --red-line: rgba(255, 84, 112, .34);
+  --amber: #f5a524;   --amber-soft: rgba(245, 165, 36, .13);
+  --blue: #60a5fa;    --blue-soft: rgba(96, 165, 250, .13);
+  --purple: #a855f7;  --purple-soft: rgba(168, 85, 247, .13);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .35);
+  --shadow-md: 0 12px 28px -14px rgba(0, 0, 0, .55);
+  --shadow-lg: 0 24px 48px -24px rgba(0, 0, 0, .7);
+}
+
+/* ── apelidos: o que ferramenta.css e os módulos já consomem ── */
+:root {
+  --pb-font: var(--sans);
+  --pb-mono: var(--mono);
+
+  --pb-bg: var(--bg);
+  --pb-surface: var(--surface);
+  --pb-surface-2: var(--surface-2);
+  --pb-surface-3: var(--surface-3);
+  --pb-linha: var(--border);
+  --pb-linha-2: var(--border-strong);
+  --pb-linha-forte: var(--border-strong);
+  --pb-ativo-bg: var(--surface-2);
+
+  --pb-t1: var(--text);
+  --pb-t2: var(--text-dim);
+  --pb-t3: var(--text-faint);
+
+  --pb-acc: var(--accent);
+  --pb-acc-2: var(--accent-strong);
+  --pb-acc-soft: var(--accent-soft);
+  --pb-acc-linha: var(--accent-soft-strong);
+
+  --pb-verde: var(--green);        --pb-verde-soft: var(--green-soft);
+  --pb-vermelho: var(--red);       --pb-vermelho-soft: var(--red-soft);
+  --pb-vermelho-linha: var(--red-line);
+  --pb-amarelo: var(--amber);      --pb-amarelo-soft: var(--amber-soft);
+  --pb-azul: var(--blue);          --pb-azul-soft: var(--blue-soft);
+  --pb-roxo: var(--purple);        --pb-roxo-soft: var(--purple-soft);
+
+  --pb-r: var(--r);
+  --pb-r-sm: var(--r-sm);
+  --pb-sombra: var(--shadow-sm);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -57,10 +140,27 @@ html, body, #root { height: 100%; }
 
 body {
   margin: 0;
-  font-family: var(--pb-font);
-  background: var(--pb-bg);
-  color: var(--pb-t1);
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Dinheiro, odds, contagens e datas em largura fixa: é o que faz coluna de
+   número ficar comparável de uma linha para a outra. */
+.pb-num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+::selection { background: var(--accent-soft-strong); color: var(--accent); }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 8px;
 }
 
 /* ── carregando a sessão ── */
@@ -69,17 +169,19 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  background: #191320;
+  flex: 1;
+  min-height: 240px;
+  height: 100%;
+  background: var(--bg);
 }
 
 .pb-boot-spinner {
-  width: 28px;
-  height: 28px;
-  border: 2.5px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--pb-acc);
+  width: 26px;
+  height: 26px;
+  border: 2.5px solid var(--border-strong);
+  border-top-color: var(--accent);
   border-radius: 50%;
-  animation: pb-girar 0.7s linear infinite;
+  animation: pb-girar .7s linear infinite;
 }
 
 @keyframes pb-girar { to { transform: rotate(360deg); } }
@@ -90,17 +192,21 @@ body {
   display: flex;
   height: 100vh;
   overflow: hidden;
+  background: var(--bg);
 }
 
+/* Sem borda: a barra se separa do conteúdo pelo degrau de fundo
+   (--bg-sidebar sobre --bg) mais uma sombra rasa. */
 .pb-sidebar {
   width: var(--pb-sidebar-w);
   flex-shrink: 0;
-  background: var(--pb-surface);
-  border-right: 1px solid var(--pb-linha);
+  background: var(--bg-sidebar);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: width 0.18s ease;
+  z-index: 2;
+  transition: width .18s ease;
 }
 
 .pb-shell.recolhida .pb-sidebar { width: var(--pb-sidebar-w-min); }
@@ -118,21 +224,20 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px;
-  border-bottom: 1px solid var(--pb-linha);
+  padding: 0 14px;
   min-height: var(--pb-topo-h);
 }
 
 .pb-marca-badge {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
-  border-radius: 9px;
-  background: var(--pb-acc);
+  border-radius: var(--r);
+  background: var(--accent);
   color: #fff;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: -0.3px;
+  letter-spacing: -.3px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -141,35 +246,41 @@ body {
 .pb-marca-txt { display: flex; flex-direction: column; min-width: 0; }
 
 .pb-marca-txt strong {
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
   white-space: nowrap;
 }
 
-.pb-marca-txt span { font-size: 10.5px; color: var(--pb-t3); white-space: nowrap; }
+.pb-marca-txt span {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
 
 .pb-recolher {
   margin-left: auto;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--pb-linha);
-  border-radius: 7px;
-  background: var(--pb-surface);
-  color: var(--pb-t2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-faint);
   cursor: pointer;
   transform: rotate(180deg);
-  transition: background 0.15s, transform 0.18s;
+  transition: background .15s, color .15s, transform .18s;
 }
 
-.pb-recolher:hover { background: var(--pb-ativo-bg); }
+.pb-recolher:hover { background: var(--surface-2); color: var(--text); }
+
 .pb-shell.recolhida .pb-recolher { transform: rotate(0deg); }
 .pb-shell.recolhida .pb-marca-txt { display: none; }
-.pb-shell.recolhida .pb-marca { padding: 14px 8px; flex-direction: column; gap: 8px; }
+.pb-shell.recolhida .pb-marca { flex-direction: column; gap: 6px; padding: 12px 0 4px; }
+.pb-shell.recolhida .pb-recolher { margin: 0; }
 
 /* ── busca ── */
 
@@ -177,12 +288,18 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 12px 14px 6px;
+  margin: 6px 12px 10px;
   padding: 8px 11px;
-  border: 1px solid var(--pb-linha);
-  border-radius: 9px;
-  background: var(--pb-bg);
-  color: var(--pb-t3);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface-2);
+  color: var(--text-faint);
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.pb-busca:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .pb-busca input {
@@ -191,89 +308,124 @@ body {
   outline: none;
   font-family: inherit;
   font-size: 12.5px;
-  color: var(--pb-t1);
+  color: var(--text);
   width: 100%;
   min-width: 0;
 }
+
+.pb-busca input::placeholder { color: var(--text-faint); }
 
 .pb-shell.recolhida .pb-busca { display: none; }
 
 /* ── navegação ── */
 
-.pb-nav { flex: 1; overflow-y: auto; padding: 6px 10px 20px; }
-.pb-nav-vazio { font-size: 12px; color: var(--pb-t3); padding: 12px 8px; }
+.pb-nav { flex: 1; overflow-y: auto; padding: 0 10px 20px; }
 
-.pb-secao + .pb-secao { margin-top: 2px; }
+.pb-nav-vazio { font-size: 12px; color: var(--text-faint); padding: 12px 8px; }
+
+.pb-secao + .pb-secao { margin-top: 6px; }
 
 .pb-secao-cab {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   width: 100%;
-  padding: 10px;
+  padding: 8px 8px 8px 10px;
   border: none;
   background: none;
-  border-radius: 8px;
-  color: var(--pb-t2);
+  border-radius: var(--r-sm);
+  color: var(--text-faint);
   font-family: inherit;
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: .09em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: background 0.13s, color 0.13s;
+  transition: color .13s;
 }
 
-.pb-secao-cab:hover { background: var(--pb-ativo-bg); color: var(--pb-t1); }
+.pb-secao-cab:hover { color: var(--text-dim); }
 .pb-secao-label { flex: 1; text-align: left; white-space: nowrap; }
+
+/* Cada grupo tem uma cor (definida em nav.js) e ela aparece duas vezes: no
+   icone do titulo e na regua que desce por tras dos itens. Sao esses dois
+   sinais que dizem que Calculadora de Risco e Monitor pertencem a Sportsbook,
+   e nao a lista solta que vinha antes. */
+.pb-secao-ico { display: flex; color: var(--secao-cor); }
 
 .pb-chevron {
   display: flex;
-  color: var(--pb-t3);
+  color: var(--text-faint);
+  opacity: .7;
   transform: rotate(90deg);
-  transition: transform 0.18s;
+  transition: transform .18s;
 }
 
 .pb-chevron.aberta { transform: rotate(-90deg); }
+
 .pb-shell.recolhida .pb-secao-label,
 .pb-shell.recolhida .pb-chevron { display: none; }
-.pb-shell.recolhida .pb-secao-cab { justify-content: center; padding: 10px 0; }
+.pb-shell.recolhida .pb-secao-cab { justify-content: center; padding: 8px 0; }
 
-.pb-secao-itens { display: flex; flex-direction: column; padding: 2px 0 6px; }
+/* A regua nasce alinhada com o centro do icone do grupo, logo acima, e os
+   itens recuam para o lado direito dela. color-mix deixa a cor do grupo
+   presente sem competir com o item ativo; quem nao suporta fica com o
+   cinza da linha, que ja resolve o agrupamento. */
+.pb-secao-itens {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0 6px 17px;
+  padding-left: 9px;
+  border-left: 1.5px solid var(--border);
+  border-left-color: color-mix(in srgb, var(--secao-cor) 32%, transparent);
+}
 
+.pb-shell.recolhida .pb-secao-itens {
+  margin: 2px 0 6px;
+  padding-left: 0;
+  border-left: 0;
+}
+
+/* Ativo = fundo suave arredondado no laranja da marca. Sem barrinha colorida
+   na lateral e sem ponto: o preenchimento já diz onde você está. */
 .pb-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px 8px 12px;
-  margin-left: 18px;
-  border-radius: 8px;
-  color: var(--pb-t2);
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  color: var(--text-dim);
   font-size: 13px;
+  font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
-  transition: background 0.13s, color 0.13s;
+  transition: background .13s, color .13s;
 }
 
-.pb-item:hover { background: var(--pb-ativo-bg); color: var(--pb-t1); }
-.pb-item.ativo { background: var(--pb-acc-soft); color: var(--pb-acc); font-weight: 600; }
+.pb-item-ico { display: flex; flex-shrink: 0; opacity: .75; }
 
-.pb-item-marca {
-  width: 5px;
-  height: 5px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--pb-linha-forte);
+.pb-item:hover { background: var(--surface-2); color: var(--text); }
+.pb-item:hover .pb-item-ico { opacity: 1; }
+
+.pb-item.ativo {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
 }
 
-.pb-item.ativo .pb-item-marca { background: var(--pb-acc); }
+.pb-item.ativo .pb-item-ico { opacity: 1; }
+
 .pb-item-txt { overflow: hidden; text-overflow: ellipsis; }
 
-.pb-shell.recolhida .pb-item { margin-left: 0; justify-content: center; padding: 8px 0; }
+.pb-shell.recolhida .pb-item { justify-content: center; padding: 9px 0; }
 .pb-shell.recolhida .pb-item-txt { display: none; }
+.pb-shell.recolhida .pb-item-ico { opacity: .9; }
 
 /* ── topo ── */
 
+/* A única borda da moldura: aqui ela é um divisor de verdade, separando a
+   faixa de título do conteúdo que rola por baixo. */
 .pb-topo {
   height: var(--pb-topo-h);
   flex-shrink: 0;
@@ -282,69 +434,75 @@ body {
   justify-content: space-between;
   gap: 16px;
   padding: 0 22px;
-  background: var(--pb-surface);
-  border-bottom: 1px solid var(--pb-linha);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
 }
 
-.pb-topo-titulo { display: flex; flex-direction: column; min-width: 0; }
-
-.pb-topo-secao {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--pb-t3);
+.pb-crumb {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
 }
 
-.pb-topo h1 {
+.pb-crumb-secao {
+  font-size: 12.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.pb-crumb-sep { display: flex; color: var(--text-faint); opacity: .55; flex-shrink: 0; }
+
+.pb-crumb h1 {
   margin: 0;
-  font-size: 15.5px;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: -0.2px;
+  letter-spacing: -.2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.pb-topo-dir { display: flex; align-items: center; gap: 10px; }
+.pb-topo-dir { display: flex; align-items: center; gap: 8px; }
 
 .pb-topo-aviso {
   font-size: 11px;
-  color: #a16207;
-  background: #fef6e0;
-  border: 1px solid #f3e0ab;
+  font-weight: 600;
+  color: var(--amber);
+  background: var(--amber-soft);
   border-radius: 999px;
-  padding: 4px 11px;
+  padding: 5px 11px;
 }
+
+.pb-icon-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--r);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.pb-icon-btn:hover { background: var(--accent-soft); color: var(--accent); }
 
 .pb-avatar {
-  width: 33px;
-  height: 33px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: #7a1a08;
-  color: #fff;
-  font-size: 11.5px;
-  font-weight: 700;
+  background: var(--accent-soft-strong);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
+  user-select: none;
 }
-
-.pb-sair {
-  width: 33px;
-  height: 33px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--pb-linha);
-  border-radius: 9px;
-  background: var(--pb-surface);
-  color: var(--pb-t2);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.pb-sair:hover { background: var(--pb-acc-soft); color: var(--pb-acc); }
 
 /* ── conteúdo ── */
 
@@ -377,7 +535,7 @@ body {
   flex: 1;
   width: 100%;
   border: 0;
-  background: var(--pb-surface);
+  background: var(--bg);
 }
 
 .pb-embed-barra {
@@ -389,90 +547,188 @@ body {
   gap: 8px;
   padding: 7px 13px;
   border-radius: 999px;
-  background: rgba(20, 23, 31, 0.86);
-  color: #fff;
+  background: var(--surface);
+  color: var(--text-dim);
+  box-shadow: var(--shadow-md);
   font-size: 11.5px;
   text-decoration: none;
-  opacity: 0.32;
-  transition: opacity 0.15s;
+  opacity: .35;
+  transition: opacity .15s;
 }
 
 .pb-embed-barra:hover { opacity: 1; }
 
-/* ── página inicial ── */
+/* ── Visão Geral ── */
 
-.pb-home { padding: 26px 28px 44px; }
-.pb-home-intro { margin-bottom: 26px; }
-
-.pb-home-intro h2 {
-  margin: 0 0 5px;
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: -0.4px;
+.pb-home {
+  padding: 24px 26px 48px;
+  width: 100%;
+  max-width: 1180px;
 }
 
-.pb-home-intro p { margin: 0; font-size: 13px; color: var(--pb-t2); }
+/* Hero: o único número que a tela realmente tem é quantas ferramentas
+   existem — e como elas se dividem entre os grupos. A barra abaixo é essa
+   divisão, não um enfeite: cada faixa é proporcional ao tamanho do grupo. */
+.pb-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 28px;
+  padding: 22px 26px;
+  margin-bottom: 30px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
 
-.pb-home-secao { margin-bottom: 26px; }
+.pb-hero-num { display: flex; flex-direction: column; gap: 2px; }
+
+.pb-hero-rotulo {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.pb-hero-valor {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -.03em;
+}
+
+.pb-hero-valor small {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-left: 9px;
+  letter-spacing: 0;
+}
+
+.pb-hero-divisao { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 10px; }
+
+.pb-barra {
+  display: flex;
+  height: 9px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.pb-barra span { display: block; height: 100%; }
+
+.pb-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.pb-legenda-item { display: flex; align-items: center; gap: 7px; }
+
+.pb-legenda-cor { width: 8px; height: 8px; border-radius: 3px; flex-shrink: 0; }
+
+.pb-legenda b {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pb-home-secao { margin-bottom: 28px; }
 
 .pb-home-secao > h3 {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0 0 12px;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.09em;
+  letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--pb-t3);
+  color: var(--text-faint);
+}
+
+.pb-home-secao > h3 .pb-conta {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  opacity: .8;
 }
 
 .pb-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(292px, 1fr));
-  gap: 13px;
+  grid-template-columns: repeat(auto-fill, minmax(288px, 1fr));
+  gap: 14px;
 }
 
 .pb-card {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 16px 17px;
-  border: 1px solid var(--pb-linha);
-  border-radius: 13px;
-  background: var(--pb-surface);
+  gap: 9px;
+  padding: 17px 18px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
   color: inherit;
   text-decoration: none;
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  transition: box-shadow .16s, transform .16s;
 }
 
 .pb-card:hover {
-  border-color: var(--pb-linha-forte);
-  box-shadow: 0 1px 2px rgba(20, 23, 31, 0.04), 0 8px 20px -12px rgba(20, 23, 31, 0.2);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
-.pb-card-topo { display: flex; align-items: center; gap: 9px; }
-.pb-card-topo strong { font-size: 14px; font-weight: 700; letter-spacing: -0.2px; }
+.pb-card-topo { display: flex; align-items: center; gap: 10px; }
+
+/* Mesma cor de grupo da barra lateral e da barra de composicao la em cima:
+   e por ela que se ve, de relance, que tres cards sao da mesma familia. */
+.pb-card-ico {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  background: color-mix(in srgb, var(--secao-cor) 12%, transparent);
+  color: var(--secao-cor);
+}
+
+.pb-card-topo strong { font-size: 13.5px; font-weight: 700; letter-spacing: -.2px; }
 
 .pb-card-tipo {
   margin-left: auto;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--pb-t3);
-  border: 1px solid var(--pb-linha);
+  color: var(--text-faint);
+  background: var(--surface-2);
   border-radius: 999px;
-  padding: 3px 9px;
+  padding: 4px 9px;
 }
 
-.pb-card p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--pb-t2); }
+.pb-card p {
+  margin: 0;
+  flex: 1;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
 
 .pb-card-origem {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10.5px;
-  color: var(--pb-t3);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-faint);
 }
 
 @media (max-width: 780px) {
@@ -480,6 +736,8 @@ body {
     position: absolute;
     z-index: 30;
     height: 100%;
-    box-shadow: 0 10px 40px -20px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-lg);
   }
+  .pb-home { padding: 18px 16px 40px; }
+  .pb-hero { gap: 18px; padding: 18px; }
 }
