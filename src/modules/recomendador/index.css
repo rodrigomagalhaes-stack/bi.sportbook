@@ -214,6 +214,16 @@
   .rb-dica-valor { align-items: flex-start; padding-left: 36px; }
 }
 
+/* Numa combinação, o "+" separa as pernas e precisa respirar: é ele que diz
+   que a dica é uma múltipla, e não um mercado com nome comprido. */
+.rb-dica-mais {
+  color: var(--pb-acc);
+  font-weight: 700;
+  padding: 0 2px;
+}
+
+.rb-dica-nome strong { font-weight: 700; }
+
 /* ── marcar a dica ─────────────────────────────────────────────────────────── */
 
 .rb-dica-fim {

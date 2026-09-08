@@ -100,18 +100,38 @@ em escala; margem alta sem volume não rende nada. Ficou um número só, em reai
 que é a linguagem em que a boost é decidida — com odd, custo e volume embaixo de
 cada dica, menores, para conferir de onde ele veio.
 
-**Single** consegue sugerir mercado novo: a odd de cada seleção é publicada,
-então dá para calcular a margem de uma boost que ainda não existe. Cada dica vem
-marcada `subir` ou `já no ar`.
+**As duas listas trazem só boost que ainda não existe.** Boost publicada
+ocupando uma das cinco vagas é uma dica que não dá para agir — ela vai para a
+seção "Já no ar neste jogo", onde continua servindo de conferência.
 
-**Bet Builder só lista o que já está no ar.** Não é limitação de esforço: para
-avaliar uma múltipla é preciso o preço que a casa daria à combinação, e
-multiplicar as pernas não serve. Medindo 33 múltiplas publicadas, a razão entre o
-preço publicado e o produto das pernas foi de **0,54 a 1,12** conforme as pernas
-se correlacionam — mediana 0,98, mas com essa dispersão. Como a margem inteira
-de uma boost vive em poucos pontos percentuais, um preço inventado com 45% de
-erro possível não decide nada. As que já estão no ar trazem o preço real, e essas
-a tela avalia.
+**Single** sugere mercado novo: a odd de cada seleção é publicada, então dá para
+calcular a margem de uma boost que ainda não existe.
+
+**Bet Builder monta a combinação.** A odd combinada é estimada, e o erro tem
+tamanho conhecido: não existe endpoint que precifique uma múltipla nova (os oito
+nomes prováveis do widget do Altenar devolvem 404), então o que dá para fazer é
+medir o desconto que a casa aplica nas múltiplas que ela mesma publicou. Em 33
+delas, a razão entre o preço publicado e o produto das pernas ficou entre
+**0,54 e 1,12**, com mediana 0,98 (2 pernas) e 0,97 (3 pernas).
+
+A mediana serve de estimativa; a dispersão é o erro possível, e ela é grande
+porque depende de QUAIS pernas se combinam — "mais gols" e "mais escanteios"
+andam juntos, "menos gols" e "mais escanteios" não. Por isso toda combinação sai
+com a marca `odd a conferir`: o número serve para **ordenar** as sugestões entre
+si (todas erram na mesma direção) e dar ordem de grandeza; o valor final vem do
+back-office.
+
+Três cortes tiram a repetição das combinações:
+
+- pernas de **famílias diferentes** — "mais de 2.5 gols" com "mais de 3.5 gols" é
+  o mesmo palpite vendido duas vezes: a segunda perna quase não baixa a chance
+  mas multiplica a odd;
+- **uma dica por conjunto de famílias** — sem isso o top 5 vinha com
+  "gols + escanteios" cinco vezes, variando só a linha;
+- **uma perna aparece no máximo duas vezes**. Só o corte por família não bastou:
+  num jogo real, "1º tempo - handicap 1X2 Lincoln (0:2)" era a perna mais valiosa
+  e entrava em quatro das cinco dicas, cada vez com um par diferente. Tecnicamente
+  eram cinco combinações distintas; na prática, a mesma dica quatro vezes.
 
 ### O que ele ranqueia — e o que ele recusa a ranquear
 

@@ -24,6 +24,8 @@ const dadosDoEvento = {
       legs: [{ market: 'Total de escanteios', selection: 'Mais de 9.5', price: 2, precosDoMercado: DUAS_VIAS }],
     },
   ],
+  // Três mercados de FAMÍLIAS diferentes: é o mínimo para haver combinação de
+  // Bet Builder, que só junta pernas de famílias distintas.
   mercados: [
     {
       marketId: 99,
@@ -33,6 +35,22 @@ const dadosDoEvento = {
         { selectionId: 2, selection: 'Menos de 3.5', price: 1.8691, precosDoMercado: DUAS_VIAS },
       ],
     },
+    {
+      marketId: 98,
+      market: 'Ambas equipes marcam',
+      selecoes: [
+        { selectionId: 4, selection: 'Sim', price: 1.8691, precosDoMercado: DUAS_VIAS },
+        { selectionId: 5, selection: 'Não', price: 2, precosDoMercado: DUAS_VIAS },
+      ],
+    },
+    {
+      marketId: 97,
+      market: 'Chance dupla',
+      selecoes: [
+        { selectionId: 6, selection: 'Casa ou empate', price: 1.2857, precosDoMercado: [1.2857, 1.5, 3.5] },
+        { selectionId: 7, selection: 'Empate ou fora', price: 3.5, precosDoMercado: [1.2857, 1.5, 3.5] },
+      ],
+    },
   ],
 }
 
@@ -40,6 +58,9 @@ const estatisticas = stats({
   gols: { n: 20, medianaStake: 10000, medianaApostas: 100, medianaApostadores: 80, stakeTotal: 200000, netTotal: 10000 },
   escanteios: { n: 6, medianaStake: 2000, medianaApostas: 30, medianaApostadores: 25, stakeTotal: 12000, netTotal: -500 },
   cartoes: { n: 2, medianaStake: 1000, medianaApostas: 20, medianaApostadores: 18, stakeTotal: 2000, netTotal: 100 },
+  ambas: { n: 8, medianaStake: 4000, medianaApostas: 40, medianaApostadores: 35, stakeTotal: 40000, netTotal: 1500 },
+  'chance-dupla': { n: 4, medianaStake: 2000, medianaApostas: 22, medianaApostadores: 20, stakeTotal: 9000, netTotal: 300 },
+  multipla: { n: 12, medianaStake: 7000, medianaApostas: 70, medianaApostadores: 60, stakeTotal: 90000, netTotal: 6000 },
 })
 
 describe('confianca', () => {
@@ -76,109 +97,42 @@ describe('volumeEsperado', () => {
 describe('ranquear', () => {
   const opcoes = { estatisticas, fator: 1, maxStake: 50 }
 
-  it('monta um candidato por boost existente e UM por mercado sugerido', () => {
-    // "Total cartões" tem duas seleções e vira uma dica só: com turbinada
-    // uniforme as duas dão a mesma margem e o mesmo volume, então duas linhas
-    // seriam a mesma dica duplicada ocupando o lugar de outro mercado.
+  it('o que já está no ar sai das dicas e vai para a lista própria', () => {
+    // Uma boost publicada ocupando uma das cinco vagas é uma dica que não dá
+    // para agir. Ela continua visível, mas fora do top.
     const r = ranquear(dadosDoEvento, opcoes)
-    expect(r.qtdBoosts).toBe(2)
-    expect(r.qtdSugestoes).toBe(1)
-    expect(r.candidatos).toHaveLength(3)
+    expect(r.noAr.map((c) => c.itemId).sort()).toEqual([10, 11])
+    expect(r.single.every((c) => !c.noAr)).toBe(true)
+    expect(r.betbuilder.every((c) => !c.noAr)).toBe(true)
   })
 
-  it('a dica do mercado carrega as seleções como opções', () => {
+  it('Single traz uma dica por mercado, com as seleções como opções', () => {
     const r = ranquear(dadosDoEvento, opcoes)
-    const sug = r.candidatos.find((c) => c.tipo === 'sugestao')
-    expect(sug.rotulo).toBe('Total cartões')
-    expect(sug.opcoes.map((o) => o.selecao)).toEqual(['Mais de 3.5', 'Menos de 3.5'])
+    const cartoes = r.single.find((c) => c.mercado === 'Total cartões')
+    expect(cartoes.rotulo).toBe('Total cartões')
+    expect(cartoes.opcoes.map((o) => o.selecao)).toEqual(['Mais de 3.5', 'Menos de 3.5'])
+    // Um mercado nunca aparece duas vezes.
+    const mercados = r.single.map((c) => c.mercado)
+    expect(new Set(mercados).size).toBe(mercados.length)
   })
 
-  it('todas as seleções de um mercado dão a MESMA margem', () => {
-    // É o que justifica a dica ser do mercado e não de uma seleção:
-    //   p           = (1/base) / (1 + overround)
-    //   price       = base × (1 + lift)
-    //   margemBoost = 1 − p × price = 1 − (1 + lift) / (1 + overround)
-    // O `base` se cancela. Na conta exata as margens são idênticas.
-    const lift = 0.1
-    const overround = 0.07
-    const exata = (base) => 1 - (1 / base / (1 + overround)) * (base * (1 + lift))
-    expect(exata(2)).toBeCloseTo(exata(12), 12)
-
-    // Na implementação sobra um resíduo: a odd turbinada é arredondada a duas
-    // casas, e é só isso que faz a tela mostrar 8,7 / 8,8 / 8,8 pp em vez de
-    // três números iguais.
-    //
-    // O tamanho do resíduo é limitado: o arredondamento erra no máximo meio
-    // centavo na odd, o que sobre a menor odd que vira sugestão (1.15) dá
-    // ~0,4 pp de margem. Meio ponto percentual é o teto — o suficiente para
-    // confirmar que a diferença é ruído de exibição, não margem de verdade.
-    const r = ranquear(dadosDoEvento, { ...opcoes, lift })
-    const sug = r.candidatos.find((c) => c.tipo === 'sugestao')
-    const margens = sug.opcoes.map((o) => 1 - (1 / o.basePrice / (1 + overround)) * o.price)
-    expect(Math.max(...margens) - Math.min(...margens)).toBeLessThan(0.005)
-  })
-
-  it('ordena por resultado esperado, que é margem × volume', () => {
-    const r = ranquear(dadosDoEvento, opcoes)
-    // A boost de gols é a única que sobra margem depois da turbinada (2→2.05)
-    // e ainda puxa 5× o volume de escanteios: tem de vir na frente.
-    expect(r.candidatos[0].itemId).toBe(10)
-    expect(r.candidatos[0].ev).toBeGreaterThan(r.candidatos[1].ev)
-  })
-
-  it('a boost cara de escanteios tem margem final negativa', () => {
-    const r = ranquear(dadosDoEvento, opcoes)
-    const escanteios = r.candidatos.find((c) => c.itemId === 11)
-    expect(escanteios.margem.margemBoost).toBeLessThan(0)
-    expect(escanteios.ev).toBeLessThan(0)
-  })
-
-  it('separa nas duas vertentes, por número de pernas', () => {
+  it('Single não sugere mercado que já tem boost simples no ar', () => {
     const dados = {
       ...dadosDoEvento,
-      boosts: [
-        ...dadosDoEvento.boosts,
+      mercados: [
+        ...dadosDoEvento.mercados,
         {
-          itemId: 40,
-          betsLimit: 0,
-          basePrice: 4,
-          price: 4.3,
-          legs: [
-            { market: 'Total de gols', selection: 'Mais de 2.5', price: 2, precosDoMercado: DUAS_VIAS },
-            { market: 'Total de escanteios', selection: 'Mais de 9.5', price: 2, precosDoMercado: DUAS_VIAS },
-          ],
+          marketId: 100,
+          market: 'Total de gols',
+          selecoes: [{ selectionId: 3, selection: 'Mais de 3.5', price: 2, precosDoMercado: DUAS_VIAS }],
         },
       ],
     }
     const r = ranquear(dados, opcoes)
-    expect(r.betbuilder.map((c) => c.itemId)).toEqual([40])
-    expect(r.single.every((c) => c.legs.length === 1)).toBe(true)
-    expect(r.single.length + r.betbuilder.length).toBe(r.candidatos.length)
+    expect(r.single.filter((c) => c.mercado === 'Total de gols')).toHaveLength(0)
   })
 
-  it('marca o que já está no ar e o que é para subir', () => {
-    const r = ranquear(dadosDoEvento, opcoes)
-    expect(r.candidatos.find((c) => c.itemId === 10).noAr).toBe(true)
-    expect(r.candidatos.find((c) => c.tipo === 'sugestao').noAr).toBe(false)
-  })
-
-  it('cada vertente sai ordenada pelo resultado esperado', () => {
-    const r = ranquear(dadosDoEvento, opcoes)
-    for (const lista of [r.single, r.betbuilder]) {
-      const evs = lista.map((c) => c.ev).filter((e) => e != null)
-      expect(evs).toEqual([...evs].sort((a, b) => b - a))
-    }
-  })
-
-  it('sugestão nasce da turbinada pretendida sobre a odd atual', () => {
-    const r = ranquear(dadosDoEvento, { ...opcoes, lift: 0.2 })
-    const sug = r.candidatos.find((c) => c.tipo === 'sugestao')
-    const duasCinco = sug.opcoes.find((o) => o.basePrice === 2)
-    expect(duasCinco.price).toBe(2.4)
-    expect(sug.margem.custo).toBeGreaterThan(0)
-  })
-
-  it('perna de múltipla NÃO barra o mercado das sugestões', () => {
+  it('perna de múltipla NÃO barra o mercado das dicas', () => {
     // A primeira versão barrava qualquer mercado citado em qualquer perna: uma
     // múltipla que usasse "Vencedor do encontro" apagava o 1x2 inteiro das
     // sugestões. Em 5 de 8 jogos auditados sumiam os mercados mais turbináveis.
@@ -198,75 +152,98 @@ describe('ranquear', () => {
       ],
     }
     const r = ranquear(dados, opcoes)
-    expect(r.candidatos.filter((c) => c.tipo === 'sugestao' && c.mercado === 'Total cartões').length).toBe(1)
+    expect(r.single.filter((c) => c.mercado === 'Total cartões')).toHaveLength(1)
   })
 
-  it('não sugere mercado que já tem boost SIMPLES no jogo', () => {
+  it('Bet Builder monta combinação nova, com as pernas escritas por extenso', () => {
+    const r = ranquear(dadosDoEvento, opcoes)
+    expect(r.betbuilder.length).toBeGreaterThan(0)
+    const combo = r.betbuilder[0]
+    expect(combo.pernas.length).toBeGreaterThanOrEqual(2)
+    expect(combo.pernas[0]).toHaveProperty('market')
+    expect(combo.pernas[0]).toHaveProperty('selection')
+    expect(combo.familia).toBe('multipla')
+  })
+
+  it('a odd da combinação sai marcada como estimada', () => {
+    // Não existe endpoint que precifique uma combinação nova; a odd vem do
+    // produto das pernas corrigido pelo desconto medido nas múltiplas da casa.
+    const r = ranquear(dadosDoEvento, opcoes)
+    expect(r.betbuilder[0].oddEstimada).toBe(true)
+    expect(r.betbuilder[0].basePrice).toBeLessThan(r.betbuilder[0].produtoDasPernas + 0.01)
+  })
+
+  it('Bet Builder não repete a mesma dupla de famílias', () => {
+    const r = ranquear(dadosDoEvento, opcoes)
+    const assinaturas = r.betbuilder.map((c) => c.assinatura)
+    expect(new Set(assinaturas).size).toBe(assinaturas.length)
+  })
+
+  it('Bet Builder não repete a mesma perna mais de duas vezes', () => {
+    // Só o corte por família não bastava: num jogo real a perna mais valiosa
+    // entrava em quatro das cinco dicas, cada vez com um par diferente.
+    const r = ranquear(dadosDoEvento, opcoes)
+    const uso = new Map()
+    for (const c of r.betbuilder) {
+      for (const p of c.pernas) {
+        const k = `${p.market}|${p.selection}`
+        uso.set(k, (uso.get(k) || 0) + 1)
+      }
+    }
+    expect(Math.max(...uso.values(), 0)).toBeLessThanOrEqual(2)
+  })
+
+  it('cada lista sai ordenada pelo resultado esperado', () => {
+    const r = ranquear(dadosDoEvento, opcoes)
+    for (const lista of [r.single, r.betbuilder, r.noAr]) {
+      const evs = lista.map((c) => c.ev).filter((e) => e != null)
+      expect(evs).toEqual([...evs].sort((a, b) => b - a))
+    }
+  })
+
+  it('joga para o fim quem não tem histórico, em vez de tratá-lo como zero', () => {
     const dados = {
       ...dadosDoEvento,
       mercados: [
         ...dadosDoEvento.mercados,
         {
-          marketId: 100,
-          market: 'Total de gols',
-          selecoes: [{ selectionId: 3, selection: 'Mais de 3.5', price: 2, precosDoMercado: DUAS_VIAS }],
+          marketId: 101,
+          market: 'Mercado nunca visto',
+          selecoes: [{ selectionId: 9, selection: 'Sim', price: 2, precosDoMercado: DUAS_VIAS }],
         },
       ],
     }
     const r = ranquear(dados, opcoes)
-    expect(r.candidatos.filter((c) => c.tipo === 'sugestao' && c.mercado === 'Total de gols')).toHaveLength(0)
-  })
-
-  it('família não complementar cai na estimativa em vez de fingir de-vig', () => {
-    // Marcador vem como Primeiro / Último / Qualq. Altura, que acontecem juntas.
-    const dados = {
-      ...dadosDoEvento,
-      boosts: [
-        {
-          itemId: 30,
-          betsLimit: 0,
-          basePrice: 1.8,
-          price: 2,
-          legs: [
-            { market: 'Marcador - Fulano (X)', selection: 'Qualq. Altura', price: 1.8, precosDoMercado: [4.25, 4.25, 1.8] },
-          ],
-        },
-      ],
-    }
-    const r = ranquear(dados, opcoes)
-    expect(r.candidatos.find((c) => c.itemId === 30).margem.estimado).toBe(true)
-  })
-
-  it('deixa as sugestões de fora quando desligadas', () => {
-    const r = ranquear(dadosDoEvento, { ...opcoes, incluirSugestoes: false })
-    expect(r.qtdSugestoes).toBe(0)
-    expect(r.candidatos.every((c) => c.tipo === 'boost')).toBe(true)
-  })
-
-  it('joga para o fim o candidato sem histórico, em vez de tratá-lo como zero', () => {
-    const dados = {
-      ...dadosDoEvento,
-      boosts: [
-        ...dadosDoEvento.boosts,
-        {
-          itemId: 12,
-          betsLimit: 0,
-          basePrice: 2,
-          price: 2.05,
-          legs: [{ market: 'Mercado nunca visto', selection: 'Sim', price: 2, precosDoMercado: DUAS_VIAS }],
-        },
-      ],
-    }
-    const r = ranquear(dados, opcoes)
-    const ultimo = r.candidatos[r.candidatos.length - 1]
-    expect(ultimo.itemId).toBe(12)
+    const ultimo = r.single[r.single.length - 1]
+    expect(ultimo.mercado).toBe('Mercado nunca visto')
     expect(ultimo.volume.stake).toBeNull()
     expect(ultimo.ev).toBeNull()
   })
 
-  it('calcula a exposição da trava quando há max stake', () => {
+  it('todas as seleções de um mercado dão a MESMA margem', () => {
+    // É o que justifica a dica ser do mercado e não de uma seleção:
+    //   p           = (1/base) / (1 + overround)
+    //   price       = base × (1 + lift)
+    //   margemBoost = 1 − p × price = 1 − (1 + lift) / (1 + overround)
+    // O `base` se cancela. Na conta exata as margens são idênticas.
+    const lift = 0.1
+    const overround = 0.07
+    const exata = (base) => 1 - (1 / base / (1 + overround)) * (base * (1 + lift))
+    expect(exata(2)).toBeCloseTo(exata(12), 12)
+
+    // Na implementação sobra um resíduo: a odd turbinada é arredondada a duas
+    // casas, e é só isso que faz a tela mostrar 8,7 / 8,8 / 8,8 pp em vez de
+    // três números iguais. O arredondamento erra no máximo meio centavo na odd,
+    // o que sobre a menor odd sugerida (1.15) dá ~0,4 pp.
+    const r = ranquear(dadosDoEvento, { ...opcoes, lift })
+    const sug = r.single.find((c) => c.opcoes)
+    const margens = sug.opcoes.map((o) => 1 - (1 / o.basePrice / (1 + overround)) * o.price)
+    expect(Math.max(...margens) - Math.min(...margens)).toBeLessThan(0.005)
+  })
+
+  it('calcula a exposição da trava das boosts no ar quando há max stake', () => {
     const r = ranquear(dadosDoEvento, opcoes)
-    const gols = r.candidatos.find((c) => c.itemId === 10)
+    const gols = r.noAr.find((c) => c.itemId === 10)
     expect(gols.exposicao.stakeMax).toBe(20000)
     expect(gols.exposicao.riscoMax).toBeCloseTo(21000, 6)
   })

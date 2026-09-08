@@ -121,11 +121,11 @@ export default function App() {
     [linhas, dados],
   )
 
-  const { candidatos, single, betbuilder } = useMemo(
+  const { candidatos, single, betbuilder, noAr } = useMemo(
     () =>
       dados
         ? ranquear(dados, { estatisticas, fator: porte.fator, lift })
-        : { candidatos: [], single: [], betbuilder: [] },
+        : { candidatos: [], single: [], betbuilder: [], noAr: [] },
     [dados, estatisticas, porte, lift],
   )
   const porVertente = { single, betbuilder }
@@ -444,6 +444,14 @@ export default function App() {
             ))
           )}
 
+          {noAr.length > 0 && (
+            <JaNoAr
+              candidatos={noAr}
+              expandido={expandidas.includes('noar')}
+              onExpandir={() => alternarExpansao('noar')}
+            />
+          )}
+
           <Placar
             placar={placar}
             apuradas={apuradas}
@@ -545,7 +553,6 @@ export default function App() {
 // iguais para descobrir qual é a primeira seria trabalho à toa.
 function BlocoVertente({ vertente, candidatos, expandido, onExpandir, marcadaDe, onMarcar, gravando }) {
   const visiveis = expandido ? candidatos : candidatos.slice(0, TOP)
-  const paraSubir = candidatos.filter((c) => !c.noAr).length
 
   return (
     <div className="pf-bloco rb-vertente">
@@ -554,7 +561,7 @@ function BlocoVertente({ vertente, candidatos, expandido, onExpandir, marcadaDe,
           {vertente.label}
           <span className="rb-vertente-cont">
             {candidatos.length
-              ? `${Math.min(TOP, candidatos.length)} de ${candidatos.length}`
+              ? `top ${Math.min(TOP, candidatos.length)} para subir`
               : 'nada a recomendar'}
           </span>
         </h3>
@@ -582,9 +589,7 @@ function BlocoVertente({ vertente, candidatos, expandido, onExpandir, marcadaDe,
               />
             ))}
           </ol>
-          {!paraSubir && (
-            <p className="pf-hint rb-vertente-nota">{vertente.descricao}</p>
-          )}
+          <p className="pf-hint rb-vertente-nota">{vertente.descricao}</p>
         </>
       )}
     </div>
@@ -600,16 +605,34 @@ function Dica({ c, posicao, destaque, marcada, gravando, onMarcar }) {
       <span className="rb-dica-pos">{posicao}</span>
 
       <div className="rb-dica-corpo">
-        <div className="rb-dica-nome">{c.rotulo}</div>
-        <div className="rb-dica-mercado">
-          {c.opcoes ? c.familiaLabel : c.mercado}
-          {c.noAr ? (
-            <span className="pf-tag">já no ar</span>
+        {/* A dica é uma instrução, não um rótulo. Numa combinação, cada perna
+            vem escrita por extenso — mercado e seleção — porque é assim que ela
+            vai ser montada no back-office. */}
+        <div className="rb-dica-nome">
+          {c.pernas ? (
+            c.pernas.map((perna, i) => (
+              <span key={`${perna.market}|${perna.selection}`}>
+                {i > 0 && <span className="rb-dica-mais"> + </span>}
+                {perna.market} <strong>{perna.selection}</strong>
+              </span>
+            ))
           ) : (
-            <span className="pf-tag ok">subir</span>
+            c.rotulo
           )}
+        </div>
+        <div className="rb-dica-mercado">
+          {c.opcoes || c.pernas ? c.familiaLabel : c.mercado}
+          {c.noAr && <span className="pf-tag">já no ar</span>}
           {c.betsLimit > 0 && <span className="pf-tag">trava {inteiro(c.betsLimit)}</span>}
           {c.isWelcome && <span className="pf-tag">welcome</span>}
+          {c.oddEstimada && (
+            <span
+              className="pf-tag alerta"
+              title="Não existe endpoint que precifique uma combinação nova. Esta odd sai do produto das pernas corrigido pelo desconto medido nas múltiplas que a casa publicou — em 33 delas a razão variou de 0,54 a 1,12. Confira o valor no back-office antes de subir."
+            >
+              odd a conferir
+            </span>
+          )}
           {c.margem.estimado && (
             <span className="pf-tag erro" title="O mercado não tem conjunto complementar para de-vigar; a margem assumida foi de 7% por perna.">
               margem estimada
@@ -633,6 +656,7 @@ function Dica({ c, posicao, destaque, marcada, gravando, onMarcar }) {
                 </strong>
               </span>
             ))}
+            {c.opcoesOcultas > 0 && <span>+{c.opcoesOcultas} outras linhas</span>}
           </div>
         )}
 
@@ -680,6 +704,66 @@ function Dica({ c, posicao, destaque, marcada, gravando, onMarcar }) {
         </button>
       </div>
     </li>
+  )
+}
+
+// As boosts que a casa já publicou neste jogo.
+//
+// Ficam fora das dicas de propósito: uma boost que já está no ar ocupando uma
+// das cinco vagas é uma dica que não dá para agir. Aqui elas continuam servindo
+// de conferência — dá para ver se alguma está entregando margem demais.
+function JaNoAr({ candidatos, expandido, onExpandir }) {
+  const visiveis = expandido ? candidatos : candidatos.slice(0, 3)
+  return (
+    <div className="pf-bloco pf-bloco-tabela">
+      <div className="pf-bloco-topo">
+        <h3>
+          Já no ar neste jogo
+          <span className="rb-vertente-cont">{candidatos.length} boosts publicadas</span>
+        </h3>
+        {candidatos.length > 3 && (
+          <button type="button" className="pf-link" onClick={onExpandir}>
+            {expandido ? 'mostrar só as 3 primeiras' : `ver as ${candidatos.length}`}
+          </button>
+        )}
+      </div>
+
+      <div className="pf-tabela-rolagem">
+        <table className="pf-tabela">
+          <thead>
+            <tr>
+              <th>Boost</th>
+              <th className="num">Odd</th>
+              <th className="num">Entrega</th>
+              <th className="num">Margem final</th>
+              <th className="num">Resultado esperado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visiveis.map((c) => (
+              <tr key={c.chave}>
+                <td>
+                  <span className="forte">{c.rotulo}</span>
+                  <span className="rb-cand-sub">
+                    {c.mercado}
+                    {c.betsLimit > 0 && <span className="pf-tag">trava {inteiro(c.betsLimit)}</span>}
+                    {c.margem.estimado && <span className="pf-tag erro">margem estimada</span>}
+                  </span>
+                </td>
+                <td className="num mono">
+                  {odd(c.basePrice)} → {odd(c.price)}
+                </td>
+                <td className="num mono">{pp(c.margem.custo)}</td>
+                <td className={`num mono forte ${sinal(c.margem.margemBoost)}`}>
+                  {pct(c.margem.margemBoost)}
+                </td>
+                <td className={`num mono forte ${sinal(c.ev)}`}>{moeda(c.ev)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
 

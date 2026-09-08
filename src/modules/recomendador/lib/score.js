@@ -35,6 +35,7 @@
 
 import { avaliarBoost, exposicao } from '../../../../server/recomendador/margem.js'
 import { familiaDaBoost, familiaDe, rotuloDaFamilia } from './familias.js'
+import { assinaturaDeFamilias, montarCombinacoes } from './combinacoes.js'
 
 // Famílias cuja grade NÃO é um conjunto de desfechos que se excluem, por mais
 // que a soma das implícitas às vezes engane.
@@ -65,18 +66,22 @@ export const VERTENTES = [
   {
     id: 'single',
     label: 'Single',
-    descricao: 'Uma seleção só. A tela consegue sugerir mercado novo aqui: a odd de cada seleção é publicada, então dá para calcular a margem de uma boost que ainda não existe.',
+    descricao: 'Uma seleção só. Nenhum mercado se repete: com turbinada uniforme, as seleções de um mesmo mercado dão margem e volume idênticos.',
   },
   {
     id: 'betbuilder',
     label: 'Bet Builder',
-    descricao: 'Duas pernas ou mais. Só entram as que a casa já publicou — sem o preço dela para a combinação, não há como avaliar uma que ainda não existe.',
+    descricao: 'Combinações de pernas de famílias diferentes. A odd combinada é estimada a partir do desconto que a casa aplica nas múltiplas dela — confira o valor final no back-office antes de subir.',
   },
 ]
 
 // Quantas dicas cada vertente entrega. Cinco é o que se lê de uma vez antes de
 // decidir; o resto fica atrás do "ver todas".
 export const TOP = 5
+
+// Teto de seleções listadas numa dica de Single. Acima disso a linha vira uma
+// parede de texto e ninguém lê nenhuma.
+const TETO_OPCOES = 6
 
 /** Quanto se pode confiar na estimativa de volume, pelo tamanho da amostra. */
 export function confianca(n) {
@@ -189,12 +194,15 @@ function candidatoDeMercado(mercado, { estatisticas, fator, lift }) {
     tipo: 'sugestao',
     rotulo: mercado.market,
     mercado: mercado.market,
-    // A seleção não é escolha do modelo: vai a lista inteira para a tela.
-    opcoes: opcoes.map((o) => ({
+    // A seleção não é escolha do modelo, então vão todas — mas com teto. Um
+    // "Total e ambas equipes marcam" traz doze seleções (quatro combinações em
+    // três linhas de gols), e listar as doze afoga a dica.
+    opcoes: opcoes.slice(0, TETO_OPCOES).map((o) => ({
       selecao: o.selecao.selection,
       basePrice: o.selecao.price,
       price: o.price,
     })),
+    opcoesOcultas: Math.max(0, opcoes.length - TETO_OPCOES),
     legs: [melhor.leg],
     familia: familia.id,
     familiaLabel: familia.label,
@@ -202,6 +210,45 @@ function candidatoDeMercado(mercado, { estatisticas, fator, lift }) {
     price: melhor.price,
     betsLimit: 0,
     margem: melhor.margem,
+    volume,
+    exposicao: null,
+  }
+}
+
+/**
+ * Monta um candidato a partir de uma COMBINAÇÃO que ainda não existe.
+ *
+ * A odd combinada de `combo.basePrice` é estimada — ver combinacoes.js para o
+ * tamanho do erro. Daqui para baixo ela entra na conta como qualquer outra odd
+ * base; o que muda é a marca `oddEstimada`, que a tela usa para dizer que o
+ * valor final tem de ser conferido no back-office antes de subir.
+ */
+function candidatoDeCombinacao(combo, { estatisticas, fator, lift }) {
+  const legs = marcarComplementaridade(combo.legs)
+  const price = Number((combo.basePrice * (1 + lift)).toFixed(2))
+  const margem = avaliarBoost({ basePrice: combo.basePrice, price, legs })
+  if (!margem) return null
+
+  // Múltipla se comporta como múltipla, seja qual for o mercado das pernas.
+  const volume = volumeEsperado(estatisticas.get('multipla'), fator)
+
+  return {
+    chave: `combo-${combo.legs.map((l) => `${l.market}:${l.selection}`).join('|')}`,
+    tipo: 'combinacao',
+    rotulo: combo.legs.map((l) => `${l.market} ${l.selection}`).join(' + '),
+    mercado: combo.legs.map((l) => l.market).join(' + '),
+    // Estruturado para a tela poder desenhar perna a perna.
+    pernas: combo.legs.map((l) => ({ market: l.market, selection: l.selection, price: l.price })),
+    legs,
+    familia: 'multipla',
+    familiaLabel: 'Múltipla / Bet Builder',
+    basePrice: combo.basePrice,
+    price,
+    oddEstimada: true,
+    produtoDasPernas: combo.produtoDasPernas,
+    assinatura: assinaturaDeFamilias(combo),
+    betsLimit: 0,
+    margem,
     volume,
     exposicao: null,
   }
@@ -231,55 +278,103 @@ function ordenar(candidatos) {
   })
 }
 
+// Quantas vezes uma mesma perna pode reaparecer entre as dicas de Bet Builder.
+const REPETICOES_POR_PERNA = 2
+
 /**
- * O ranking completo de um jogo.
+ * Tira a repetição das combinações.
  *
- * `dados` é o que /api/recomendador/evento devolveu; `estatisticas` e `fator`
- * vêm do histórico (historico.js). `incluirSugestoes` liga os mercados que
- * ainda não têm boost, turbinados no `lift` pretendido.
+ * Dois cortes, e os dois foram necessários:
+ *
+ * 1. Uma dica por CONJUNTO DE FAMÍLIAS. Sem isso o top 5 vinha com
+ *    "gols + escanteios" cinco vezes, variando só a linha.
+ * 2. Uma perna aparece no máximo duas vezes. Só o corte por família não bastou:
+ *    num jogo real, "1º tempo - handicap 1X2 Lincoln (0:2)" era a perna mais
+ *    valiosa e entrava em quatro das cinco dicas, cada vez com um par diferente.
+ *    Tecnicamente eram cinco combinações distintas; na prática era a mesma dica
+ *    quatro vezes.
+ *
+ * Recebe a lista já ordenada e percorre do melhor para o pior, então o que sai é
+ * sempre a melhor combinação ainda disponível.
  */
-export function ranquear(dados, { estatisticas, fator, lift = 0.1, maxStake = 0, incluirSugestoes = true }) {
+function diversificar(candidatos) {
+  const familiasVistas = new Set()
+  const usoDaPerna = new Map()
+  const saida = []
+
+  for (const c of candidatos) {
+    if (familiasVistas.has(c.assinatura)) continue
+
+    const chaves = c.pernas.map((p) => `${p.market}|${p.selection}`)
+    if (chaves.some((k) => (usoDaPerna.get(k) || 0) >= REPETICOES_POR_PERNA)) continue
+
+    familiasVistas.add(c.assinatura)
+    for (const k of chaves) usoDaPerna.set(k, (usoDaPerna.get(k) || 0) + 1)
+    saida.push(c)
+  }
+  return saida
+}
+
+/**
+ * As dicas de um jogo, separadas nas duas vertentes em que uma boost sobe.
+ *
+ * ── AS DICAS SÃO O QUE SUBIR, NÃO O QUE JÁ ESTÁ NO AR ────────────────────────
+ * As duas listas trazem só boost que ainda não existe. Boost publicada ocupando
+ * uma das cinco vagas é uma dica que não dá para agir — ela vai para `noAr`,
+ * numa seção à parte, onde continua servindo de conferência.
+ *
+ * `single` tem no máximo uma dica por mercado (ver `candidatoDeMercado`) e
+ * `betbuilder` no máximo uma por combinação de famílias: cinco linhas de
+ * "gols + escanteios" com a linha vizinha seriam a mesma dica cinco vezes.
+ */
+export function ranquear(dados, { estatisticas, fator, lift = 0.1, maxStake = 0 } = {}) {
   const ctx = { estatisticas, fator, lift, maxStake }
 
-  const boosts = (dados?.boosts || []).map((b) => candidatoDeBoost(b, ctx)).filter(Boolean)
+  const noAr = ordenar(
+    (dados?.boosts || [])
+      .map((b) => candidatoDeBoost(b, ctx))
+      .filter(Boolean)
+      .map((c) => ({ ...c, ev: ev(c), noAr: true, vertente: c.legs.length > 1 ? 'betbuilder' : 'single' })),
+  )
 
-  // Mercado que já tem boost SIMPLES no jogo não vira sugestão: a linha da boost
-  // real, com a odd que a casa de fato publicou, diz mais que a hipótese.
+  // Mercado que já tem boost SIMPLES no jogo não vira dica: ela já está lá.
   //
   // Só as de perna única barram. A primeira versão barrava qualquer mercado
   // citado em qualquer perna, e uma múltipla que usasse "Vencedor do encontro"
   // apagava o 1x2 inteiro das sugestões — em 5 dos 8 jogos auditados sumiam
-  // justamente os mercados mais turbináveis do jogo. Uma perna dentro de uma
-  // múltipla não é uma boost naquele mercado.
+  // justamente os mercados mais turbináveis. Uma perna dentro de uma múltipla
+  // não é uma boost naquele mercado.
   const jaTemBoost = new Set(
-    boosts
-      .filter((c) => c.legs.length === 1)
-      .map((c) => c.legs[0].market)
+    (dados?.boosts || [])
+      .filter((b) => b.legs.length === 1)
+      .map((b) => b.legs[0]?.market)
       .filter(Boolean),
   )
-  const sugestoes = incluirSugestoes
-    ? (dados?.mercados || [])
-        .filter((m) => !jaTemBoost.has(m.market))
-        .map((m) => candidatoDeMercado(m, ctx))
-        .filter(Boolean)
-    : []
 
-  const todos = [...boosts, ...sugestoes].map((c) => ({
-    ...c,
-    ev: ev(c),
-    vertente: c.legs.length > 1 ? 'betbuilder' : 'single',
-    // "Subir" = ainda não existe no site. "No ar" = a casa já publicou, e a odd
-    // turbinada da linha é a real, não a pretendida.
-    noAr: c.tipo === 'boost',
-  }))
-  const comEv = ordenar(todos)
+  const mercadosLivres = (dados?.mercados || []).filter((m) => !jaTemBoost.has(m.market))
+
+  const single = ordenar(
+    mercadosLivres
+      .map((m) => candidatoDeMercado(m, ctx))
+      .filter(Boolean)
+      .map((c) => ({ ...c, ev: ev(c), noAr: false, vertente: 'single' })),
+  )
+
+  const betbuilder = diversificar(
+    ordenar(
+      montarCombinacoes(mercadosLivres)
+        .map((combo) => candidatoDeCombinacao(combo, ctx))
+        .filter(Boolean)
+        .map((c) => ({ ...c, ev: ev(c), noAr: false, vertente: 'betbuilder' })),
+    ),
+  )
 
   return {
-    candidatos: comEv,
-    single: comEv.filter((c) => c.vertente === 'single'),
-    betbuilder: comEv.filter((c) => c.vertente === 'betbuilder'),
-    qtdBoosts: boosts.length,
-    qtdSugestoes: sugestoes.length,
+    single,
+    betbuilder,
+    noAr,
+    // Tudo junto: a marcação e o placar procuram o candidato por aqui.
+    candidatos: [...single, ...betbuilder, ...noAr],
   }
 }
 
