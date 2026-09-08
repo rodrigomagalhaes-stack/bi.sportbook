@@ -156,6 +156,55 @@ Nenhuma das duas metades sozinha responde: boost com margem ótima que ninguém
 aposta não rende nada, e boost que puxa muito volume com margem negativa é
 prejuízo em escala.
 
+### Como ele aprende o volume
+
+O volume não vem de regra escrita no código. Não existe "gols vale 2× escanteios"
+em lugar nenhum: `lib/aprendizado.js` **mede** a mediana de stake de cada
+combinação sobre o `boost_days` e é isso que responde. Se escanteios passar a
+puxar mais, a estimativa vira sozinha na próxima importação — não há passo manual
+de treino.
+
+O que é regra é só **como agrupar**. Três dimensões:
+
+| | |
+|---|---|
+| **Vertente** | Sportsbook, Tipster ou Welcome. É o pedido central: o que puxa volume num não é o que puxa no outro, e a tela tem um seletor "Cadastrar para" que troca as dicas inteiras. |
+| **Família de mercado** | gols, escanteios, cartões, múltipla… (ver `lib/familias.js`). |
+| **Faixa de odd** | até 1.50, 1.50–2.50, 2.50–4, 4–8, acima de 8. Uma boost de 1.20 e uma de 8.00 não disputam o mesmo público. |
+
+#### A hierarquia é o que separa aprender de decorar
+
+A célula que interessa — "Tipster, escanteios, odd 2.50 a 4" — costuma ter duas
+ou três observações, e a mediana de duas observações é ruído com cara de número.
+
+Então cada célula é puxada na direção do pai: `(vertente, família, odd)` →
+`(vertente, família)` → `(família)` → `(vertente)` → tudo, com peso
+`n / (n + 8)`. Com 2 amostras a célula pesa 1/5; com 40, quase tudo. Uma
+observação de R$ 50 mil num mar de R$ 1 mil não vira a estimativa.
+
+Cada dica mostra **de onde o número veio** — "aprendido de Tipster · Escanteios ·
+12 boosts" ou "aprendido de todas as boosts" —, porque saber qual dos dois foi é
+a diferença entre confiar e não confiar nele. E o bloco **"O que ele aprendeu"**
+abre a tabela inteira: volume mediano por vertente e mercado, com o tamanho da
+amostra ao lado. A recomendação não é caixa preta.
+
+#### A odd começou a ser gravada agora
+
+O `boost_days` guardava vertente e mercado, mas **não a odd**: o Sportbook Vs.
+Tipster lia `Price`/`Net Price` da planilha só para detectar a campanha de
+aumento e descartava antes de salvar. A dimensão de odd existia no modelo e não
+tinha o que ler.
+
+Agora o import grava a **mediana** das cotações pagas de cada grupo (mediana e
+não média: um bilhete com cotação fora da curva jogaria o grupo inteiro para
+outra faixa). Dias antigos continuam sem odd e o modelo simplesmente não usa
+aquela dimensão para eles — o painel mostra quantas linhas já têm a odd, e a
+dimensão liga sozinha conforme os dias vão sendo importados.
+
+Quando ligar, ela também passa a distinguir as seleções de um mesmo mercado por
+volume: a margem delas empata (ver adiante), mas o favorito a 1.35 e o azarão a
+12.00 caem em faixas diferentes e deixam de ser intercambiáveis.
+
 ### O que é do jogo e o que é generalizado
 
 Vale saber onde a recomendação é sob medida e onde ela é média de todo mundo:
@@ -163,7 +212,7 @@ Vale saber onde a recomendação é sob medida e onde ela é média de todo mund
 | | |
 |---|---|
 | **Margem e custo** | 100% daquele jogo. Saem das odds reais do evento — `basePrice` e `price` de cada boost, e o grupo de de-vig do mercado dela. Dois jogos nunca dão o mesmo número. |
-| **Volume** | mediana da **família** (generalizada: quanto "total de gols" costuma puxar, em qualquer jogo) × **fator do confronto** (específico: quanto as boosts destes times puxaram, contra o jogo mediano). |
+| **Volume** | o que o modelo aprendeu para aquela **vertente + família + faixa de odd** (generalizado: vale para qualquer jogo) × **fator do confronto** (específico: quanto as boosts destes times puxaram, contra o jogo mediano). |
 
 Ou seja: a ordem entre mercados dentro de um jogo é dele; o formato dessa ordem
 se repete entre jogos, escalado pelo porte do confronto. E se os times não têm

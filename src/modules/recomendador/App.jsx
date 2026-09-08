@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Resumo from '../../shell/Resumo.jsx'
-import { achatar, diagnostico, fatorDoJogo, porFamilia } from './lib/historico.js'
+import { achatar, diagnostico, fatorDoJogo } from './lib/historico.js'
+import { tabelaAprendida, treinar } from './lib/aprendizado.js'
 import { apagarDica, buscarDias, buscarDicas, salvarDica } from './lib/dados.js'
 import { apurar, compartilhamento, naoMarcadas, resumo } from './lib/comparacao.js'
 import { TOP, VERTENTES, ranquear } from './lib/score.js'
@@ -28,6 +29,14 @@ const TETO_LISTA = 150
 
 const LIFTS = [0.05, 0.1, 0.15, 0.2]
 
+// As vertentes em que uma boost é cadastrada. O modelo aprende cada uma
+// separado: o que puxa volume no Sportsbook não é o que puxa no Tipster.
+const CADASTROS = [
+  { id: 'sportsbook', label: 'Sportsbook' },
+  { id: 'tipster', label: 'Tipster' },
+  { id: 'welcome', label: 'Welcome' },
+]
+
 export default function App() {
   const [jogos, setJogos] = useState([])
   const [eventId, setEventId] = useState('')
@@ -48,6 +57,9 @@ export default function App() {
   const [erroId, setErroId] = useState('')
 
   const [lift, setLift] = useState(0.1)
+  // Para qual vertente a boost vai ser cadastrada. Muda as dicas inteiras.
+  const [cadastro, setCadastro] = useState('sportsbook')
+  const [verAprendido, setVerAprendido] = useState(false)
   // Vertentes abertas além do top 5.
   const [expandidas, setExpandidas] = useState([])
   const [dicas, setDicas] = useState([])
@@ -114,7 +126,10 @@ export default function App() {
   // `historico || []` criava um array novo a cada render e refazia os três
   // useMemo abaixo sem necessidade.
   const linhas = useMemo(() => historico || [], [historico])
-  const estatisticas = useMemo(() => porFamilia(linhas), [linhas])
+  // O modelo é retreinado quando o histórico muda — que é a cada importação de
+  // dia no Sportbook Vs. Tipster. Não há passo manual de "aprender".
+  const modelo = useMemo(() => treinar(linhas), [linhas])
+  const aprendido = useMemo(() => tabelaAprendida(modelo, { minAmostra: 2 }), [modelo])
   const diag = useMemo(() => diagnostico(linhas), [linhas])
   const porte = useMemo(
     () => fatorDoJogo(linhas, dados?.evento?.competidores || []),
@@ -124,9 +139,9 @@ export default function App() {
   const { candidatos, single, betbuilder, noAr } = useMemo(
     () =>
       dados
-        ? ranquear(dados, { estatisticas, fator: porte.fator, lift })
+        ? ranquear(dados, { modelo, vertente: cadastro, fator: porte.fator, lift })
         : { candidatos: [], single: [], betbuilder: [], noAr: [] },
-    [dados, estatisticas, porte, lift],
+    [dados, modelo, cadastro, porte, lift],
   )
   const porVertente = { single, betbuilder }
 
@@ -379,6 +394,22 @@ export default function App() {
         <div className="pf-coluna larga">
           <div className="pf-bloco rb-controles">
             <label className="pf-campo">
+              <span>Cadastrar para</span>
+              <div className="pf-abas">
+                {CADASTROS.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    className={`pf-aba${cadastro === v.id ? ' ativa' : ''}`}
+                    onClick={() => setCadastro(v.id)}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </label>
+
+            <label className="pf-campo">
               <span>Turbinada pretendida</span>
               <div className="pf-abas">
                 {LIFTS.map((l) => (
@@ -394,8 +425,9 @@ export default function App() {
               </div>
             </label>
             <p className="pf-hint">
-              Quanto você pretende turbinar a odd nas dicas de <strong>subir</strong>. As que já
-              estão no ar usam a odd turbinada real, e este botão não as afeta.
+              As dicas mudam com a vertente: o modelo aprendeu o que puxa volume em cada uma
+              separadamente. A turbinada é a que você pretende aplicar — as boosts já no ar usam a
+              odd turbinada real e não são afetadas por ela.
             </p>
           </div>
 
@@ -443,6 +475,14 @@ export default function App() {
               />
             ))
           )}
+
+          <Aprendido
+            modelo={modelo}
+            linhas={aprendido}
+            cadastro={cadastro}
+            expandido={verAprendido}
+            onExpandir={() => setVerAprendido((v) => !v)}
+          />
 
           {noAr.length > 0 && (
             <JaNoAr
@@ -674,9 +714,16 @@ function Dica({ c, posicao, destaque, marcada, gravando, onMarcar }) {
           <span>
             volume esperado <strong className="mono">{moeda(c.volume.stake)}</strong>
           </span>
-          <span className={c.volume.confianca.tom === 'erro' ? 'rb-fraco' : undefined}>
-            {c.volume.n ? `${c.volume.n} boosts no histórico` : 'sem histórico da família'}
-            {c.volume.n > 0 && ` · ROI ${pct(c.volume.roiHistorico)}`}
+          {/* De onde a estimativa de volume veio. "Tipster · Escanteios" vale
+              muito mais que "todas as boosts", e sem dizer qual dos dois foi o
+              número não dá para julgar. */}
+          <span
+            className={c.volume.confianca.tom === 'erro' ? 'rb-fraco' : undefined}
+            title="O nível do modelo que informou a estimativa e quantas boosts o sustentam."
+          >
+            {c.volume.nivel
+              ? `aprendido de ${c.volume.nivel.rotulo} · ${c.volume.n} boosts`
+              : 'sem histórico'}
           </span>
         </div>
       </div>
@@ -704,6 +751,89 @@ function Dica({ c, posicao, destaque, marcada, gravando, onMarcar }) {
         </button>
       </div>
     </li>
+  )
+}
+
+// O que o modelo aprendeu, em tabela.
+//
+// Existe para a recomendação não ser uma caixa preta: dá para conferir de onde
+// veio cada estimativa e, principalmente, VER a diferença entre Sportsbook e
+// Tipster — que é o que separa "regra" de "aprendido". Nada aqui está escrito
+// no código; tudo é mediana medida sobre o `boost_days`.
+function Aprendido({ modelo, linhas, cadastro, expandido, onExpandir }) {
+  const daVertente = linhas.filter((l) => l.vertente === cadastro)
+  const visiveis = expandido ? linhas : daVertente.slice(0, 6)
+
+  return (
+    <div className="pf-bloco pf-bloco-tabela">
+      <div className="pf-bloco-topo">
+        <h3>
+          O que ele aprendeu
+          <span className="rb-vertente-cont">
+            {modelo.total.toLocaleString('pt-BR')} boosts no histórico
+            {modelo.comOdd > 0
+              ? ` · ${modelo.comOdd.toLocaleString('pt-BR')} com a odd`
+              : ' · nenhuma com a odd ainda'}
+          </span>
+        </h3>
+        <button type="button" className="pf-link" onClick={onExpandir}>
+          {expandido ? `ver só ${cadastro}` : 'ver todas as vertentes'}
+        </button>
+      </div>
+
+      {!linhas.length ? (
+        <p className="pf-vazio">
+          Ainda não há histórico suficiente. Cada dia importado no Sportbook Vs. Tipster alimenta
+          este modelo — não existe passo manual de treino.
+        </p>
+      ) : (
+        <>
+          <div className="pf-tabela-rolagem">
+            <table className="pf-tabela">
+              <thead>
+                <tr>
+                  <th>Vertente</th>
+                  <th>Mercado</th>
+                  <th className="num">Volume mediano</th>
+                  <th className="num">Apostas</th>
+                  <th className="num">Boosts</th>
+                  <th className="num">ROI realizado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visiveis.map((l) => (
+                  <tr key={`${l.vertente}|${l.familia}`}>
+                    <td className={l.vertente === cadastro ? 'forte' : undefined}>{l.vertente}</td>
+                    <td>{l.familiaLabel}</td>
+                    <td className="num mono forte">{moeda(l.stake)}</td>
+                    <td className="num mono">{inteiro(l.apostas)}</td>
+                    <td className="num">
+                      <span className={`pf-tag${l.n >= 12 ? ' ok' : l.n >= 5 ? '' : ' alerta'}`}>
+                        {l.n}
+                      </span>
+                    </td>
+                    <td className={`num mono ${sinal(l.roi)}`}>{pct(l.roi)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="pf-hint rb-vertente-nota">
+            Volume mediano é a mediana do stake que aquela combinação puxou — mediana e não média
+            porque um clássico sozinho distorceria a média. O <strong>ROI realizado</strong> está
+            aqui como conferência e <strong>não entra no ranking</strong>: com esta amostra ele é
+            quase todo sorte.
+            {modelo.comOdd === 0 && (
+              <>
+                {' '}A faixa de odd ainda não afina nada — o Sportbook Vs. Tipster passou a gravar a
+                odd agora, e a dimensão vai ligar sozinha conforme os dias forem importados.
+              </>
+            )}
+          </p>
+        </>
+      )}
+    </div>
   )
 }
 

@@ -11,6 +11,12 @@
 // vira o retrato do maior jogo que ele pegou; a mediana continua descrevendo o
 // caso típico, que é o que se quer estimar para o próximo jogo.
 //
+// ── ONDE MORA O APRENDIZADO ──────────────────────────────────────────────────
+// A agregação por família saiu daqui e virou `aprendizado.js`, que aprende por
+// (vertente, família, faixa de odd) com encolhimento hierárquico. Aqui ficou o
+// que é do JOGO e não do mercado: achatar o histórico e medir o porte do
+// confronto pelos times.
+//
 // ── O QUE ESTE ARQUIVO NÃO FAZ ───────────────────────────────────────────────
 // Não usa o net/ROI histórico para prever lucro. Ele é agregado e mostrado na
 // tela ao lado do tamanho da amostra, como conferência, mas quem estima a
@@ -45,6 +51,10 @@ export function achatar(dias) {
         apostadores: Number(b.userCount) || 0,
         stake: Number(b.stake) || 0,
         net: Number(b.net) || 0,
+        // A cotação mediana do grupo. Só existe nos dias importados depois de o
+        // Sportbook Vs. Tipster passar a gravá-la; nos anteriores vem nula e o
+        // modelo simplesmente não usa a dimensão de odd para aquela linha.
+        odd: Number(b.odd) > 1 ? Number(b.odd) : null,
       })
     }
   }
@@ -84,28 +94,6 @@ export function timesDe(evento) {
     if (partes.length === 2) return partes
   }
   return [texto]
-}
-
-/** Estatísticas por família de mercado. */
-export function porFamilia(linhas) {
-  const grupos = new Map()
-  for (const l of linhas) {
-    if (!grupos.has(l.familia)) grupos.set(l.familia, [])
-    grupos.get(l.familia).push(l)
-  }
-  const out = new Map()
-  for (const [familia, itens] of grupos) {
-    out.set(familia, {
-      familia,
-      n: itens.length,
-      medianaStake: mediana(itens.map((i) => i.stake)),
-      medianaApostas: mediana(itens.map((i) => i.apostas)),
-      medianaApostadores: mediana(itens.map((i) => i.apostadores)),
-      stakeTotal: itens.reduce((s, i) => s + i.stake, 0),
-      netTotal: itens.reduce((s, i) => s + i.net, 0),
-    })
-  }
-  return out
 }
 
 // Quanto de amostra é preciso para o fator do jogo valer inteiro. Com 5 boosts

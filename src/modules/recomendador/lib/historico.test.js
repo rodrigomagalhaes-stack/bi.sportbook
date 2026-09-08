@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { achatar, diagnostico, fatorDoJogo, mediana, porFamilia, timesDe } from './historico.js'
+import { achatar, diagnostico, fatorDoJogo, mediana, timesDe } from './historico.js'
 
 const dia = (date, boosts) => ({ date, boosts })
 const linha = (event, market, stake, extra = {}) => ({
@@ -26,6 +26,15 @@ describe('achatar', () => {
   it('descarta linha sem evento e aguenta dia sem boosts', () => {
     const linhas = achatar([dia('2026-08-01', [{ market: 'Total de gols' }]), dia('2026-08-02', null)])
     expect(linhas).toHaveLength(0)
+  })
+
+  it('leva a odd quando o dia foi importado depois de ela passar a ser gravada', () => {
+    const linhas = achatar([
+      dia('2026-09-05', [linha('A vs. B', 'Total de gols', 100, { odd: 2.1 })]),
+      dia('2026-09-04', [linha('C vs. D', 'Total de gols', 100)]),
+    ])
+    expect(linhas[0].odd).toBe(2.1)
+    expect(linhas[1].odd).toBeNull() // dia antigo: a dimensão não informa nada
   })
 
   it('lê a vertente nos dois formatos, com Sportsbook de padrão', () => {
@@ -87,21 +96,6 @@ describe('timesDe', () => {
   it('nome que não parte em dois volta inteiro, não em pedaços', () => {
     expect(timesDe('Evento 17487710')).toEqual(['Evento 17487710'])
     expect(timesDe('')).toEqual([])
-  })
-})
-
-describe('porFamilia', () => {
-  it('agrega mediana e totais por família', () => {
-    const linhas = achatar([
-      dia('2026-08-01', [
-        linha('A vs. B', 'Total de gols', 100),
-        linha('C vs. D', 'Total de gols', 300),
-        linha('E vs. F', 'Total de escanteios', 50),
-      ]),
-    ])
-    const stats = porFamilia(linhas)
-    expect(stats.get('gols')).toMatchObject({ n: 2, medianaStake: 200, stakeTotal: 400 })
-    expect(stats.get('escanteios').n).toBe(1)
   })
 })
 

@@ -1,10 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { TOP, VERTENTES, confianca, ranquear, volumeEsperado } from './score.js'
+import { TOP, VERTENTES, ranquear, volumeEsperado } from './score.js'
+import { treinar } from './aprendizado.js'
 
 // Um mercado de duas vias com ~7% de margem, para as pernas dos exemplos.
 const DUAS_VIAS = [1.8691, 1.8691]
 
-const stats = (mapa) => new Map(Object.entries(mapa))
+// O modelo é TREINADO sobre histórico, não configurado à mão: é a diferença
+// entre aprender e ter regra. Estas linhas são o histórico de mentira.
+const historico = (familia, n, stake, extra = {}) =>
+  Array.from({ length: n }, () => ({
+    vertente: 'sportsbook',
+    familia,
+    stake,
+    net: stake * 0.05,
+    apostas: 20,
+    apostadores: 18,
+    ...extra,
+  }))
 
 const dadosDoEvento = {
   evento: { eventId: 1, eventName: 'PSG vs. Monaco', competidores: ['PSG', 'Monaco'] },
@@ -54,48 +66,41 @@ const dadosDoEvento = {
   ],
 }
 
-const estatisticas = stats({
-  gols: { n: 20, medianaStake: 10000, medianaApostas: 100, medianaApostadores: 80, stakeTotal: 200000, netTotal: 10000 },
-  escanteios: { n: 6, medianaStake: 2000, medianaApostas: 30, medianaApostadores: 25, stakeTotal: 12000, netTotal: -500 },
-  cartoes: { n: 2, medianaStake: 1000, medianaApostas: 20, medianaApostadores: 18, stakeTotal: 2000, netTotal: 100 },
-  ambas: { n: 8, medianaStake: 4000, medianaApostas: 40, medianaApostadores: 35, stakeTotal: 40000, netTotal: 1500 },
-  'chance-dupla': { n: 4, medianaStake: 2000, medianaApostas: 22, medianaApostadores: 20, stakeTotal: 9000, netTotal: 300 },
-  multipla: { n: 12, medianaStake: 7000, medianaApostas: 70, medianaApostadores: 60, stakeTotal: 90000, netTotal: 6000 },
-})
-
-describe('confianca', () => {
-  it('escala com o tamanho da amostra', () => {
-    expect(confianca(20).id).toBe('alta')
-    expect(confianca(6).id).toBe('media')
-    expect(confianca(2).id).toBe('baixa')
-    expect(confianca(0).id).toBe('nenhuma')
-  })
-})
+// Muitas amostras de propósito: com célula gorda o modelo confia nela e o teste
+// mede a lógica do ranqueamento, não o encolhimento (que tem teste próprio em
+// aprendizado.test.js).
+const MODELO = treinar([
+  ...historico('gols', 40, 10000),
+  ...historico('escanteios', 40, 2000),
+  ...historico('cartoes', 40, 1000),
+  ...historico('ambas', 40, 4000),
+  ...historico('chance-dupla', 40, 2000),
+  ...historico('multipla', 40, 7000),
+])
 
 describe('volumeEsperado', () => {
-  it('aplica o porte do jogo sobre a mediana da família', () => {
-    const v = volumeEsperado(estatisticas.get('gols'), 1.5)
-    expect(v.stake).toBe(15000)
-    expect(v.apostas).toBe(150)
+  it('pergunta ao modelo e aplica o porte do jogo por cima', () => {
+    const v = volumeEsperado(MODELO, { vertente: 'sportsbook', familia: 'gols' }, 1.5)
+    expect(v.stake).toBeGreaterThan(13000)
     expect(v.confianca.id).toBe('alta')
+    expect(v.nivel.id).toBe('vertente+familia')
   })
 
-  it('devolve nulo, e não zero, quando a família nunca apareceu', () => {
+  it('devolve nulo, e não zero, quando não há histórico nenhum', () => {
     // Zero seria um número: a tela mostraria "R$ 0" como se fosse estimativa.
-    const v = volumeEsperado(undefined, 1)
+    const v = volumeEsperado(treinar([]), { vertente: 'sportsbook', familia: 'gols' }, 1)
     expect(v.stake).toBeNull()
     expect(v.confianca.id).toBe('nenhuma')
   })
 
-  it('leva o ROI histórico junto, para a tela poder mostrar a conferência', () => {
-    const v = volumeEsperado(estatisticas.get('gols'), 1)
-    expect(v.roiHistorico).toBeCloseTo(0.05, 6)
-    expect(v.n).toBe(20)
+  it('diz de onde o número veio', () => {
+    const v = volumeEsperado(MODELO, { vertente: 'tipster', familia: 'inexistente' }, 1)
+    expect(v.nivel.id).toBe('geral')
   })
 })
 
 describe('ranquear', () => {
-  const opcoes = { estatisticas, fator: 1, maxStake: 50 }
+  const opcoes = { modelo: MODELO, vertente: 'sportsbook', fator: 1, maxStake: 50 }
 
   it('o que já está no ar sai das dicas e vai para a lista própria', () => {
     // Uma boost publicada ocupando uma das cinco vagas é uma dica que não dá
@@ -201,7 +206,10 @@ describe('ranquear', () => {
     }
   })
 
-  it('joga para o fim quem não tem histórico, em vez de tratá-lo como zero', () => {
+  it('mercado inédito ainda recebe estimativa, mas do nível geral', () => {
+    // Antes o modelo devolvia nulo para família desconhecida. A hierarquia é
+    // melhor que isso: ela cai no que TODAS as boosts dizem, e avisa o nível —
+    // que é o que permite a quem lê saber o quanto aquele número vale.
     const dados = {
       ...dadosDoEvento,
       mercados: [
@@ -214,10 +222,14 @@ describe('ranquear', () => {
       ],
     }
     const r = ranquear(dados, opcoes)
-    const ultimo = r.single[r.single.length - 1]
-    expect(ultimo.mercado).toBe('Mercado nunca visto')
-    expect(ultimo.volume.stake).toBeNull()
-    expect(ultimo.ev).toBeNull()
+    const inedito = r.single.find((c) => c.mercado === 'Mercado nunca visto')
+    expect(inedito.volume.stake).toBeGreaterThan(0)
+    expect(inedito.volume.nivel.id).toBe('vertente')
+  })
+
+  it('sem histórico nenhum, o resultado esperado é nulo e não zero', () => {
+    const r = ranquear(dadosDoEvento, { ...opcoes, modelo: treinar([]) })
+    expect(r.single.every((c) => c.volume.stake === null && c.ev === null)).toBe(true)
   })
 
   it('todas as seleções de um mercado dão a MESMA margem', () => {

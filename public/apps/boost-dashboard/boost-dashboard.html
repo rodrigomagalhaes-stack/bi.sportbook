@@ -943,19 +943,37 @@ function parseBoosts(rows) {
     const bWin   = +r[C.bonusWin]   ||0;
     allUsers.add(player);
     if (!groups[key]) groups[key]={event,market,total:0,users:new Set(),stake:0,win:0,bonusStake:0,bonusWin:0,
-                                   cat:'sportsbook',boostCount:0,boostStake:0,boostWin:0,boostExtra:0};
+                                   cat:'sportsbook',boostCount:0,boostStake:0,boostWin:0,boostExtra:0,
+                                   precos:[]};
     const g=groups[key];
     g.total++; g.users.add(player);
     g.stake+=stake; g.win+=win; g.bonusStake+=bStake; g.bonusWin+=bWin;
+    // A cotação paga de cada bilhete. Ela já era lida para detectar a campanha
+    // de aumento, mas se perdia aqui — e o Recomendador precisa dela para
+    // aprender que uma boost de 1.20 e uma de 8.00 não puxam o mesmo volume.
+    // Ver src/modules/recomendador/lib/aprendizado.js.
+    if (temPreco) { const np = +r[cNetPrice]||0; if (np > 1) g.precos.push(np); }
     if (ehAumento(r)) { g.boostCount++; g.boostStake+=stake; g.boostWin+=win; g.boostExtra+=custoAumento(r); }
   });
+
+  // Odd representativa do grupo: a MEDIANA das cotações pagas, não a média.
+  // Uma linha de bilhete com cotação fora da curva (um erro de digitação, uma
+  // aposta antiga a preço velho) puxaria a média e jogaria o grupo inteiro para
+  // outra faixa de odd.
+  const oddDoGrupo = precos => {
+    if (!precos.length) return null;
+    const v = precos.slice().sort((a,b)=>a-b);
+    const m = Math.floor(v.length/2);
+    return +( v.length%2 ? v[m] : (v[m-1]+v[m])/2 ).toFixed(4);
+  };
 
   parsedBoosts = Object.values(groups).map(g => {
     const net = g.stake - g.win;
     const roi = g.stake ? net/g.stake : 0;
     return { event:g.event, market:g.market, cat:'sportsbook', aumOff:false, total:g.total, userCount:g.users.size,
              stake:g.stake, win:g.win, bonusStake:g.bonusStake, bonusWin:g.bonusWin, net, roi,
-             boostCount:g.boostCount, boostStake:g.boostStake, boostWin:g.boostWin, boostExtra:g.boostExtra };
+             boostCount:g.boostCount, boostStake:g.boostStake, boostWin:g.boostWin, boostExtra:g.boostExtra,
+             odd: oddDoGrupo(g.precos) };
   });
 
   const totStake = parsedBoosts.reduce((s,b)=>s+b.stake,0);

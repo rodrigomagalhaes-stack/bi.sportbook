@@ -36,6 +36,7 @@
 import { avaliarBoost, exposicao } from '../../../../server/recomendador/margem.js'
 import { familiaDaBoost, familiaDe, rotuloDaFamilia } from './familias.js'
 import { assinaturaDeFamilias, montarCombinacoes } from './combinacoes.js'
+import { prever } from './aprendizado.js'
 
 // Famílias cuja grade NÃO é um conjunto de desfechos que se excluem, por mais
 // que a soma das implícitas às vezes engane.
@@ -83,43 +84,41 @@ export const TOP = 5
 // parede de texto e ninguém lê nenhuma.
 const TETO_OPCOES = 6
 
-/** Quanto se pode confiar na estimativa de volume, pelo tamanho da amostra. */
-export function confianca(n) {
-  if (n >= 12) return { id: 'alta', label: 'alta', tom: 'ok' }
-  if (n >= 5) return { id: 'media', label: 'média', tom: '' }
-  if (n >= 1) return { id: 'baixa', label: 'baixa', tom: 'alerta' }
-  return { id: 'nenhuma', label: 'sem histórico', tom: 'erro' }
-}
-
 /**
- * O volume que se espera desta família neste jogo.
+ * O volume que se espera de um candidato, perguntado ao modelo aprendido.
  *
- * Sem histórico da família não há o que estimar, e o retorno vem zerado com
- * confiança "sem histórico" — a tela mostra "—" em vez de um número inventado.
+ * O modelo (aprendizado.js) responde pela combinação de vertente, família e
+ * faixa de odd, encolhendo o específico na direção do geral conforme a amostra.
+ * Aqui só entra o que ele não sabe: o porte do confronto, que vem dos times
+ * (historico.js) e multiplica o resultado.
+ *
+ * Sem histórico nenhum o stake volta nulo — a tela mostra "—" em vez de um
+ * número inventado.
  */
-export function volumeEsperado(stats, fator) {
-  if (!stats || !stats.n) {
-    return { stake: null, apostas: null, apostadores: null, n: 0, confianca: confianca(0) }
-  }
+export function volumeEsperado(modelo, { vertente, familia, familiaLabel, odd }, fator) {
+  const p = prever(modelo, { vertente, familia, familiaLabel, odd })
   return {
-    stake: stats.medianaStake * fator,
-    apostas: stats.medianaApostas * fator,
-    apostadores: stats.medianaApostadores * fator,
-    n: stats.n,
-    netHistorico: stats.netTotal,
-    stakeHistorico: stats.stakeTotal,
-    roiHistorico: stats.stakeTotal ? stats.netTotal / stats.stakeTotal : null,
-    confianca: confianca(stats.n),
+    stake: p.stake == null ? null : p.stake * fator,
+    n: p.n,
+    // De onde o número veio: "Tipster · Escanteios" pesa muito mais que
+    // "todas as boosts", e a tela precisa dizer qual dos dois foi.
+    nivel: p.nivel,
+    caminho: p.caminho,
+    confianca: p.confianca,
   }
 }
 
 /** Monta um candidato a partir de uma boost que já existe no jogo. */
-function candidatoDeBoost(b, { estatisticas, fator, maxStake }) {
+function candidatoDeBoost(b, { modelo, vertente, fator, maxStake }) {
   const familia = familiaDaBoost(b.legs)
   const legs = marcarComplementaridade(b.legs)
   const margem = avaliarBoost({ ...b, legs })
   if (!margem) return null
-  const volume = volumeEsperado(estatisticas.get(familia.id), fator)
+  const volume = volumeEsperado(
+    modelo,
+    { vertente, familia: familia.id, familiaLabel: familia.label, odd: b.price },
+    fator,
+  )
   return {
     chave: `boost-${b.itemId}`,
     tipo: 'boost',
@@ -163,9 +162,8 @@ function candidatoDeBoost(b, { estatisticas, fator, maxStake }) {
  * qual delas turbinar é quem conhece o jogo. O modelo não tem o que dizer aí: o
  * histórico de volume é por família, nunca por seleção.
  */
-function candidatoDeMercado(mercado, { estatisticas, fator, lift }) {
+function candidatoDeMercado(mercado, { modelo, vertente, fator, lift }) {
   const familia = familiaDe(mercado.market)
-  const volume = volumeEsperado(estatisticas.get(familia.id), fator)
 
   const opcoes = mercado.selecoes
     .map((selecao) => {
@@ -179,15 +177,27 @@ function candidatoDeMercado(mercado, { estatisticas, fator, lift }) {
       ])
       const price = Number((selecao.price * (1 + lift)).toFixed(2))
       const margem = avaliarBoost({ basePrice: selecao.price, price, legs: [leg] })
-      return margem ? { selecao, leg, price, margem } : null
+      if (!margem) return null
+      // O volume é perguntado POR SELEÇÃO, com a odd dela. A margem empata entre
+      // as seleções de um mercado (o preço base se cancela), mas o volume não
+      // precisa empatar: assim que o histórico tiver odd, o favorito a 1.35 e o
+      // azarão a 12.00 passam a ser distinguíveis. Enquanto não tiver, os dois
+      // caem no mesmo nível do modelo e empatam — como empatam hoje.
+      const volume = volumeEsperado(
+        modelo,
+        { vertente, familia: familia.id, familiaLabel: familia.label, odd: price },
+        fator,
+      )
+      return { selecao, leg, price, margem, volume }
     })
     .filter(Boolean)
 
   if (!opcoes.length) return null
 
-  // Todas empatam na margem; o desempate é só o arredondamento da odd. A de
-  // melhor margem representa o mercado, e as outras seguem como opção.
-  const melhor = opcoes.reduce((a, b) => (b.margem.margemBoost > a.margem.margemBoost ? b : a))
+  // A seleção que representa o mercado é a de melhor resultado esperado.
+  const valor = (o) => (o.volume.stake == null ? -Infinity : o.margem.margemBoost * o.volume.stake)
+  const melhor = opcoes.reduce((a, b) => (valor(b) > valor(a) ? b : a))
+  const volume = melhor.volume
 
   return {
     chave: `sug-${mercado.marketId}`,
@@ -201,6 +211,7 @@ function candidatoDeMercado(mercado, { estatisticas, fator, lift }) {
       selecao: o.selecao.selection,
       basePrice: o.selecao.price,
       price: o.price,
+      volume: o.volume.stake,
     })),
     opcoesOcultas: Math.max(0, opcoes.length - TETO_OPCOES),
     legs: [melhor.leg],
@@ -223,14 +234,18 @@ function candidatoDeMercado(mercado, { estatisticas, fator, lift }) {
  * base; o que muda é a marca `oddEstimada`, que a tela usa para dizer que o
  * valor final tem de ser conferido no back-office antes de subir.
  */
-function candidatoDeCombinacao(combo, { estatisticas, fator, lift }) {
+function candidatoDeCombinacao(combo, { modelo, vertente, fator, lift }) {
   const legs = marcarComplementaridade(combo.legs)
   const price = Number((combo.basePrice * (1 + lift)).toFixed(2))
   const margem = avaliarBoost({ basePrice: combo.basePrice, price, legs })
   if (!margem) return null
 
   // Múltipla se comporta como múltipla, seja qual for o mercado das pernas.
-  const volume = volumeEsperado(estatisticas.get('multipla'), fator)
+  const volume = volumeEsperado(
+    modelo,
+    { vertente, familia: 'multipla', familiaLabel: 'Múltipla / Bet Builder', odd: price },
+    fator,
+  )
 
   return {
     chave: `combo-${combo.legs.map((l) => `${l.market}:${l.selection}`).join('|')}`,
@@ -327,8 +342,8 @@ function diversificar(candidatos) {
  * `betbuilder` no máximo uma por combinação de famílias: cinco linhas de
  * "gols + escanteios" com a linha vizinha seriam a mesma dica cinco vezes.
  */
-export function ranquear(dados, { estatisticas, fator, lift = 0.1, maxStake = 0 } = {}) {
-  const ctx = { estatisticas, fator, lift, maxStake }
+export function ranquear(dados, { modelo, vertente = 'sportsbook', fator = 1, lift = 0.1, maxStake = 0 } = {}) {
+  const ctx = { modelo, vertente, fator, lift, maxStake }
 
   const noAr = ordenar(
     (dados?.boosts || [])
