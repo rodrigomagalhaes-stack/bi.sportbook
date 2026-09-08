@@ -49,7 +49,7 @@ describe('treinar', () => {
   })
 
   it('conta quantas linhas trazem a odd', () => {
-    // Enquanto o Sportbook Vs. Tipster não gravava a odd, isto é zero e a
+    // Enquanto o Controle de Boost não gravava a odd, isto é zero e a
     // dimensão de faixa fica dormente.
     const m = treinar([linha(), linha({ odd: 2.1 })])
     expect(m.comOdd).toBe(1)

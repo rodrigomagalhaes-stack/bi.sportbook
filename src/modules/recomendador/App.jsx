@@ -127,7 +127,7 @@ export default function App() {
   // useMemo abaixo sem necessidade.
   const linhas = useMemo(() => historico || [], [historico])
   // O modelo é retreinado quando o histórico muda — que é a cada importação de
-  // dia no Sportbook Vs. Tipster. Não há passo manual de "aprender".
+  // dia no Controle de Boost. Não há passo manual de "aprender".
   const modelo = useMemo(() => treinar(linhas), [linhas])
   const aprendido = useMemo(() => tabelaAprendida(modelo, { minAmostra: 2 }), [modelo])
   const diag = useMemo(() => diagnostico(linhas), [linhas])
@@ -734,7 +734,7 @@ function Dica({ c, posicao, destaque, marcada, gravando, onMarcar }) {
           <span>resultado esperado</span>
         </div>
         {/* Marcar congela esta previsão. Depois, quando o dia for importado no
-            Sportbook Vs. Tipster, o placar compara o que foi previsto aqui com
+            Controle de Boost, o placar compara o que foi previsto aqui com
             o que a boost de fato puxou. */}
         <button
           type="button"
@@ -783,7 +783,7 @@ function Aprendido({ modelo, linhas, cadastro, expandido, onExpandir }) {
 
       {!linhas.length ? (
         <p className="pf-vazio">
-          Ainda não há histórico suficiente. Cada dia importado no Sportbook Vs. Tipster alimenta
+          Ainda não há histórico suficiente. Cada dia importado no Controle de Boost alimenta
           este modelo — não existe passo manual de treino.
         </p>
       ) : (
@@ -826,7 +826,7 @@ function Aprendido({ modelo, linhas, cadastro, expandido, onExpandir }) {
             quase todo sorte.
             {modelo.comOdd === 0 && (
               <>
-                {' '}A faixa de odd ainda não afina nada — o Sportbook Vs. Tipster passou a gravar a
+                {' '}A faixa de odd ainda não afina nada — o Controle de Boost passou a gravar a
                 odd agora, e a dimensão vai ligar sozinha conforme os dias forem importados.
               </>
             )}
@@ -915,7 +915,7 @@ function Placar({ placar, apuradas, fora, temHistorico }) {
         </div>
         <p className="pf-vazio">
           Marque <strong>subi essa</strong> nas dicas que você levar para o site. A previsão fica
-          gravada como está agora e, quando você importar o dia no Sportbook Vs. Tipster, esta
+          gravada como está agora e, quando você importar o dia no Controle de Boost, esta
           seção compara com o que a boost puxou de verdade.
         </p>
       </div>

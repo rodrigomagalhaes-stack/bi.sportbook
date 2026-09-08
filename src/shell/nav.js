@@ -38,7 +38,7 @@ export const secoes = [
       {
         to: '/boost-dashboard',
         icone: 'colunas',
-        label: 'Sportbook Vs. Tipster',
+        label: 'Controle de Boost',
         desc: 'Acompanhamento diário de boosts: apostado, risco e resultado por dia.',
         tipo: 'embutido',
         src: '/apps/boost-dashboard/boost-dashboard.html',

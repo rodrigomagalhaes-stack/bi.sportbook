@@ -1,6 +1,6 @@
 // O lado do volume: o que as boosts já rodadas puxaram de aposta.
 //
-// A fonte é `boost_days`, a mesma tabela que o Sportbook Vs. Tipster grava a
+// A fonte é `boost_days`, a mesma tabela que o Controle de Boost grava a
 // cada importação da planilha do dia. Cada dia guarda uma linha por
 // evento+mercado, já com apostas, apostadores, stake e net apurados — não há
 // nada a recalcular aqui, só a agregar.
@@ -27,7 +27,7 @@
 
 import { familiaDe } from './familias.js'
 
-// Mesma leitura de vertente do Sportbook Vs. Tipster: `cat` quando foi marcada
+// Mesma leitura de vertente do Controle de Boost: `cat` quando foi marcada
 // à mão, o booleano `tipster` do formato antigo, e Sportsbook como padrão.
 const vertenteDe = (b) => {
   if (b.cat) return b.cat
@@ -52,7 +52,7 @@ export function achatar(dias) {
         stake: Number(b.stake) || 0,
         net: Number(b.net) || 0,
         // A cotação mediana do grupo. Só existe nos dias importados depois de o
-        // Sportbook Vs. Tipster passar a gravá-la; nos anteriores vem nula e o
+        // Controle de Boost passar a gravá-la; nos anteriores vem nula e o
         // modelo simplesmente não usa a dimensão de odd para aquela linha.
         odd: Number(b.odd) > 1 ? Number(b.odd) : null,
       })

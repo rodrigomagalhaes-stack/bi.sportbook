@@ -104,7 +104,7 @@ export function treinar(linhas) {
     familia: converter(porFamilia),
     vertente: converter(porVertente),
     geral: resumir(validas),
-    // Quantas linhas trazem a odd. Enquanto o Sportbook Vs. Tipster não a
+    // Quantas linhas trazem a odd. Enquanto o Controle de Boost não a
     // gravava, este número é zero e a faixa de odd nunca informa nada — a tela
     // usa isso para dizer que a dimensão ainda está enchendo.
     comOdd: validas.filter((l) => (l.faixaOdd ?? faixaDaOdd(l.odd)) != null).length,

@@ -23,7 +23,7 @@ motivo que não tinha nada a ver com ele.
 | Ferramenta | Rota | Como está integrada | Projeto de origem |
 |---|---|---|---|
 | Recomendador de Boosts | `/recomendador` | módulo React | nasceu aqui |
-| Sportbook Vs. Tipster | `/boost-dashboard` | embutida | SportbookVsTipter |
+| Controle de Boost | `/boost-dashboard` | embutida | SportbookVsTipter |
 | Calculadora de Risco | `/calculadora-risco` | embutida | calculadora-de-risco |
 | Monitor Super Odds | `/monitor` | embutida (lê a API do deploy do monitor) | monitor-bilhetes-superodds |
 | Welcome Boost | `/welcome-boost` (+ 3 sub-rotas) | módulo React | welcome-boost-manager |
@@ -35,7 +35,7 @@ motivo que não tinha nada a ver com ele.
 
 **Módulo React** = componente montado dentro do portal, navegação instantânea.
 **Embutida** = a página HTML original, servida de `public/apps/` dentro de um
-iframe. São monolitos de JavaScript puro (o Sportbook Vs. Tipster tem 2.500 linhas)
+iframe. São monolitos de JavaScript puro (o Controle de Boost tem 2.500 linhas)
 que já funcionam: reescrevê-los em React arriscaria a lógica sem mudar nada do
 que o usuário vê. O iframe ainda isola o CSS global de cada um. Migrar uma
 delas para módulo React depois é troca de uma linha em `src/shell/nav.js` mais
@@ -190,8 +190,8 @@ amostra ao lado. A recomendação não é caixa preta.
 
 #### A odd começou a ser gravada agora
 
-O `boost_days` guardava vertente e mercado, mas **não a odd**: o Sportbook Vs.
-Tipster lia `Price`/`Net Price` da planilha só para detectar a campanha de
+O `boost_days` guardava vertente e mercado, mas **não a odd**: o Controle de
+Boost lia `Price`/`Net Price` da planilha só para detectar a campanha de
 aumento e descartava antes de salvar. A dimensão de odd existia no modelo e não
 tinha o que ler.
 
@@ -238,8 +238,8 @@ questão de ter amostra: hoje ela não daria.
   mercados e 8.716 odds num PSG x Monaco) e o servidor a enxuga para ~25 KB.
   Passa pelo backend, e não direto do navegador, por dois motivos: o tamanho, e
   o 403 que o Altenar devolve quando o Referer é o domínio da Esportiva.
-- **Histórico de volume** — `boost_days`, a mesma tabela que o Sportbook Vs.
-  Tipster grava a cada importação. Lida do navegador, assinada com o usuário
+- **Histórico de volume** — `boost_days`, a mesma tabela que o Controle de
+  Boost grava a cada importação. Lida do navegador, assinada com o usuário
   logado (`src/lib/supabaseRest.js`).
 - **Dicas marcadas** — `boost_dicas`, criada por `supabase/boost_dicas.sql`.
   Precisa ser aplicada à mão antes de o botão "subi essa" funcionar; sem ela a
@@ -354,7 +354,7 @@ combinado); só a primeira também não.
 
 Marcar **subi essa** numa dica grava a previsão em `boost_dicas` (SQL em
 `supabase/boost_dicas.sql`, aplicado à mão no SQL Editor como os outros). Quando
-o dia é importado no Sportbook Vs. Tipster, o realizado chega em `boost_days` e
+o dia é importado no Controle de Boost, o realizado chega em `boost_days` e
 os dois se encontram por **jogo + família** — não por nome de mercado, porque o
 Altenar escreve "Total de gols" e a planilha escreve "Total Goals Over/Under".
 
@@ -410,7 +410,7 @@ os rótulos que ficaram de fora — cada um é um candidato a virar regra nova.
 
 ## Um tema só para todas as telas
 
-Cada projeto chegou com a própria paleta: três escuras (Sportbook Vs. Tipster,
+Cada projeto chegou com a própria paleta: três escuras (Controle de Boost,
 Analisador, Freebets), uma bege-quente (Welcome Boost), uma cinza-clara
 (Monitor) e o Pick'em em preto. Todas foram para o mesmo branco.
 
