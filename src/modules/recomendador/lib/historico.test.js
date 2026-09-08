@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { achatar, diagnostico, fatorDoJogo, mediana, timesDe } from './historico.js'
+import { achatar, diagnostico, mediana, timesDe } from './historico.js'
 
 const dia = (date, boosts) => ({ date, boosts })
 const linha = (event, market, stake, extra = {}) => ({
@@ -96,50 +96,6 @@ describe('timesDe', () => {
   it('nome que não parte em dois volta inteiro, não em pedaços', () => {
     expect(timesDe('Evento 17487710')).toEqual(['Evento 17487710'])
     expect(timesDe('')).toEqual([])
-  })
-})
-
-describe('fatorDoJogo', () => {
-  const muitasLinhas = (evento, stake, n) =>
-    Array.from({ length: n }, () => linha(evento, 'Total de gols', stake))
-
-  it('acha os times mesmo com o nome escrito diferente', () => {
-    const linhas = achatar([dia('2026-08-01', muitasLinhas('PSG vs. Lens', 500, 3))])
-    const { n } = fatorDoJogo(linhas, ['PSG', 'Monaco'])
-    expect(n).toBe(3)
-  })
-
-  it('sobe quando os times deste jogo puxam mais que o normal', () => {
-    const linhas = achatar([
-      dia('2026-08-01', [
-        ...muitasLinhas('PSG vs. Lens', 1000, 20),
-        ...muitasLinhas('Lorient vs. Brest', 100, 20),
-      ]),
-    ])
-    const { fator } = fatorDoJogo(linhas, ['PSG', 'Monaco'])
-    expect(fator).toBeGreaterThan(1.5)
-  })
-
-  it('encolhe na direção de 1 quando a amostra é curta', () => {
-    // Um jogo só do time, com stake dez vezes a mediana, não pode multiplicar
-    // a estimativa por dez.
-    const linhas = achatar([
-      dia('2026-08-01', [
-        linha('PSG vs. Lens', 'Total de gols', 10000),
-        ...muitasLinhas('Lorient vs. Brest', 1000, 20),
-      ]),
-    ])
-    const { fator, n } = fatorDoJogo(linhas, ['PSG'])
-    expect(n).toBe(1)
-    expect(fator).toBeLessThan(3)
-    expect(fator).toBeGreaterThan(1)
-  })
-
-  it('vale 1 quando não há histórico nenhum dos times', () => {
-    const linhas = achatar([dia('2026-08-01', muitasLinhas('Lorient vs. Brest', 100, 5))])
-    expect(fatorDoJogo(linhas, ['PSG', 'Monaco']).fator).toBe(1)
-    expect(fatorDoJogo([], ['PSG']).fator).toBe(1)
-    expect(fatorDoJogo(linhas, []).fator).toBe(1)
   })
 })
 

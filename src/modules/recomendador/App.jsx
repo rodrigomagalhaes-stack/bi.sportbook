@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Resumo from '../../shell/Resumo.jsx'
-import { achatar, diagnostico, fatorDoJogo } from './lib/historico.js'
-import { tabelaAprendida, treinar } from './lib/aprendizado.js'
+import { achatar, diagnostico } from './lib/historico.js'
+import { preverFator, tabelaAprendida, treinar } from './lib/aprendizado.js'
 import { apagarDica, buscarDias, buscarDicas, salvarDica } from './lib/dados.js'
 import { apurar, compartilhamento, naoMarcadas, resumo } from './lib/comparacao.js'
 import { TOP, VERTENTES, ranquear } from './lib/score.js'
@@ -131,9 +131,12 @@ export default function App() {
   const modelo = useMemo(() => treinar(linhas), [linhas])
   const aprendido = useMemo(() => tabelaAprendida(modelo, { minAmostra: 2 }), [modelo])
   const diag = useMemo(() => diagnostico(linhas), [linhas])
+  // O porte do confronto sai do mesmo modelo: fator de cada time, combinados
+  // pela média geométrica, refinado pelo confronto exato quando ele já se
+  // repetiu no histórico.
   const porte = useMemo(
-    () => fatorDoJogo(linhas, dados?.evento?.competidores || []),
-    [linhas, dados],
+    () => preverFator(modelo, dados?.evento?.competidores || []),
+    [modelo, dados],
   )
 
   const { candidatos, single, betbuilder, noAr } = useMemo(
@@ -521,9 +524,11 @@ export default function App() {
               </li>
               <li>
                 <strong>Volume esperado</strong> é a mediana de stake da família neste tipo de jogo,
-                corrigida pelo porte do confronto ({porte.fator.toFixed(2).replace('.', ',')}× o
-                jogo mediano, de {porte.n} boosts destes times no histórico). Com amostra curta ele
-                é um chute educado, e o número de boosts ao lado de cada dica diz o quanto.
+                corrigida pelo <strong>porte do confronto</strong>: {porte.fator.toFixed(2).replace('.', ',')}× o
+                jogo mediano, aprendido de {porte.nivel.rotulo}
+                {porte.n > 0 && ` sobre ${porte.n} boosts`}. Cada time tem o fator dele e os dois se
+                combinam pela média geométrica — um time de 2× com um de 0,5× dá 1×, e não os 1,25×
+                que a média aritmética daria. Confronto que já se repetiu refina isso por cima.
               </li>
               <li>
                 <strong>Bet Builder só lista o que já está no ar</strong>, e não sugere combinação

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { FAIXAS_ODD, faixaDaOdd, prever, tabelaAprendida, treinar } from './aprendizado.js'
+import {
+  FAIXAS_ODD,
+  chaveConfronto,
+  faixaDaOdd,
+  prever,
+  preverFator,
+  tabelaAprendida,
+  treinar,
+} from './aprendizado.js'
 
 const linha = (extra = {}) => ({
   vertente: 'sportsbook',
@@ -167,5 +175,106 @@ describe('tabelaAprendida', () => {
       linha({ familia: 'escanteios', stake: 400 }),
     ])
     expect(tabelaAprendida(m, { minAmostra: 5 }).map((l) => l.familia)).toEqual(['gols'])
+  })
+})
+
+describe('chaveConfronto', () => {
+  it('é a mesma com o mando invertido', () => {
+    // Senão cada clássico vira dois baldes de uma amostra cada.
+    expect(chaveConfronto(['Flamengo', 'Corinthians'])).toBe(
+      chaveConfronto(['Corinthians', 'Flamengo']),
+    )
+  })
+
+  it('ignora acento e caixa', () => {
+    expect(chaveConfronto(['Grêmio', 'Vasco'])).toBe(chaveConfronto(['GREMIO', 'vasco']))
+  })
+})
+
+describe('preverFator', () => {
+  const jogo = (event, stake, n) =>
+    Array.from({ length: n }, () => linha({ event, stake }))
+
+  // Cada jogo contra um adversário diferente: assim o time junta amostra e o
+  // CONFRONTO não, que é o caso de um time grande na temporada normal.
+  const temporada = (time, stake, n) =>
+    Array.from({ length: n }, (_, i) => linha({ event: `${time} vs. Adversario ${i}`, stake }))
+
+  it('aprende o porte de cada time separado', () => {
+    const m = treinar([
+      ...temporada('Flamengo', 40000, 30),
+      ...temporada('Remo', 2000, 30),
+    ])
+    // Confronto que nunca aconteceu — o caso normal de uma rodada nova. Só o
+    // nível de time tem o que dizer.
+    const grande = preverFator(m, ['Flamengo', 'Estreante FC'])
+    const pequeno = preverFator(m, ['Remo', 'Estreante FC'])
+    expect(grande.fator).toBeGreaterThan(pequeno.fator * 2)
+    expect(grande.nivel.id).toBe('times')
+  })
+
+  it('combina os dois times pela média geométrica, não pela aritmética', () => {
+    // Um time de 2× com um de 0,5× tem de dar 1×. A média aritmética daria
+    // 1,25× e inflaria todo jogo de time grande contra time pequeno.
+    const m = treinar([
+      ...jogo('Gigante vs. Neutro', 4000, 60),
+      ...jogo('Anao vs. Neutro', 1000, 60),
+      ...jogo('Neutro vs. Outro', 2000, 60),
+    ])
+    const f = preverFator(m, ['Gigante', 'Anao'])
+    const aritmetica = (2 + 0.5) / 2
+    expect(f.fator).toBeLessThan(aritmetica)
+  })
+
+  it('o confronto exato refina o que os times sozinhos diziam', () => {
+    // Clássico que se repete tem público próprio, acima do que os dois times
+    // explicariam separados.
+    const m = treinar([
+      ...jogo('Flamengo vs. Neutro', 10000, 40),
+      ...jogo('Corinthians vs. Neutro', 10000, 40),
+      ...jogo('Neutro vs. Outro', 10000, 40),
+      ...jogo('Flamengo vs. Corinthians', 90000, 20),
+    ])
+    const semClassico = preverFator(m, ['Flamengo', 'Neutro'])
+    const classico = preverFator(m, ['Flamengo', 'Corinthians'])
+    expect(classico.fator).toBeGreaterThan(semClassico.fator * 2)
+    expect(classico.nivel.id).toBe('confronto')
+  })
+
+  it('confronto raro quase não move o fator', () => {
+    const m = treinar([
+      ...jogo('Flamengo vs. Neutro', 10000, 40),
+      ...jogo('Corinthians vs. Neutro', 10000, 40),
+      linha({ event: 'Flamengo vs. Corinthians', stake: 900000 }),
+    ])
+    const f = preverFator(m, ['Flamengo', 'Corinthians'])
+    expect(f.fator).toBeLessThan(4)
+  })
+
+  it('time sem histórico não empurra o fator para lado nenhum', () => {
+    const m = treinar([
+      ...jogo('Flamengo vs. Neutro', 40000, 30),
+      ...jogo('Neutro vs. Outro', 10000, 30),
+    ])
+    const f = preverFator(m, ['Flamengo', 'Time Inedito FC'])
+    expect(f.fator).toBeGreaterThan(1)
+    expect(f.times.find((t) => t.nome === 'Time Inedito FC').fator).toBe(1)
+  })
+
+  it('acha o time mesmo com o nome escrito um pouco diferente', () => {
+    const m = treinar(jogo('Real Madrid vs. Neutro', 40000, 30))
+    expect(preverFator(m, ['Real Madrid CF', 'Neutro']).n).toBeGreaterThan(0)
+  })
+
+  it('nome curto não casa por continência', () => {
+    // "PSG" dentro de qualquer nome que o contenha juntaria times diferentes.
+    const m = treinar(jogo('Bahia vs. Neutro', 40000, 30))
+    const f = preverFator(m, ['AB', 'Neutro'])
+    expect(f.times.find((t) => t.nome === 'AB').n).toBe(0)
+  })
+
+  it('sem histórico, ou sem dois times, o fator é 1', () => {
+    expect(preverFator(treinar([]), ['A', 'B']).fator).toBe(1)
+    expect(preverFator(treinar(muitas(10)), ['So um time']).fator).toBe(1)
   })
 })

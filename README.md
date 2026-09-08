@@ -168,9 +168,10 @@ O que é regra é só **como agrupar**. Três dimensões:
 
 | | |
 |---|---|
-| **Vertente** | Sportsbook, Tipster ou Welcome. É o pedido central: o que puxa volume num não é o que puxa no outro, e a tela tem um seletor "Cadastrar para" que troca as dicas inteiras. |
+| **Vertente** | Sportsbook, Tipster ou Welcome. O que puxa volume num não é o que puxa no outro, e a tela tem um seletor "Cadastrar para" que troca as dicas inteiras. |
 | **Família de mercado** | gols, escanteios, cartões, múltipla… (ver `lib/familias.js`). |
 | **Faixa de odd** | até 1.50, 1.50–2.50, 2.50–4, 4–8, acima de 8. Uma boost de 1.20 e uma de 8.00 não disputam o mesmo público. |
+| **Time e confronto** | cada time tem o porte dele, e o confronto exato tem o seu. Multiplica o volume estimado. |
 
 #### A hierarquia é o que separa aprender de decorar
 
@@ -187,6 +188,25 @@ Cada dica mostra **de onde o número veio** — "aprendido de Tipster · Escante
 a diferença entre confiar e não confiar nele. E o bloco **"O que ele aprendeu"**
 abre a tabela inteira: volume mediano por vertente e mercado, com o tamanho da
 amostra ao lado. A recomendação não é caixa preta.
+
+#### O porte é por time, não por "algum dos dois"
+
+A primeira versão juntava num balde só toda linha do histórico que citasse
+qualquer um dos dois times e tirava uma mediana. Isso mistura o público do
+Flamengo com o do Remo e devolve um número que não descreve nenhum dos dois.
+
+Agora cada time tem o fator dele, medido sobre os jogos dele, e os dois se
+combinam pela **média geométrica** — não pela aritmética, porque o fator é
+multiplicativo: um time de 2× com um de 0,5× tem de dar 1×, e a aritmética daria
+1,25×, inflando todo jogo de time grande contra time pequeno.
+
+Por cima disso entra o **confronto exato**, quando ele já se repetiu: clássico
+tem público próprio, acima do que os dois times sozinhos explicam. Num teste com
+histórico fabricado, Flamengo × Corinthians deu 2,86× pelo nível de confronto,
+enquanto Flamengo × Remo ficou em 0,56× pelo nível de time. O refinamento também
+é em espaço logarítmico, pela mesma razão de ser multiplicativo.
+
+Confronto raro quase não move nada: com uma aparição o peso é 1/5.
 
 #### A odd começou a ser gravada agora
 
@@ -212,7 +232,7 @@ Vale saber onde a recomendação é sob medida e onde ela é média de todo mund
 | | |
 |---|---|
 | **Margem e custo** | 100% daquele jogo. Saem das odds reais do evento — `basePrice` e `price` de cada boost, e o grupo de de-vig do mercado dela. Dois jogos nunca dão o mesmo número. |
-| **Volume** | o que o modelo aprendeu para aquela **vertente + família + faixa de odd** (generalizado: vale para qualquer jogo) × **fator do confronto** (específico: quanto as boosts destes times puxaram, contra o jogo mediano). |
+| **Volume** | o que o modelo aprendeu para aquela **vertente + família + faixa de odd** (generalizado: vale para qualquer jogo) × o **porte do confronto** (específico: o fator de cada time, combinado, e o do clássico quando ele já se repetiu). |
 
 Ou seja: a ordem entre mercados dentro de um jogo é dele; o formato dessa ordem
 se repete entre jogos, escalado pelo porte do confronto. E se os times não têm

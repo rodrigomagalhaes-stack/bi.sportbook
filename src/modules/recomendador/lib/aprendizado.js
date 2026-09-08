@@ -23,11 +23,37 @@
 // é a diferença entre confiar e não confiar nele.
 
 import { rotuloDaFamilia } from './familias.js'
+import { timesDe } from './historico.js'
 
 // Amostras para uma célula valer sozinha. Com 8 ela conta metade; com 24, três
 // quartos. Baixo o suficiente para o específico aparecer, alto o suficiente para
 // duas observações não virarem verdade.
 const PESO = 8
+
+// O porte do confronto encolhe mais devagar: um time tem muito mais linhas no
+// histórico que uma célula de mercado, e um confronto exato tem muito menos.
+const PESO_TIME = 6
+const PESO_CONFRONTO = 4
+
+const semAcento = (t) =>
+  String(t ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim()
+
+/** Chave de um time, para agrupar. */
+export const chaveTime = (nome) => semAcento(nome).replace(/\s+/g, ' ')
+
+/**
+ * Chave de um confronto, independente de mando.
+ *
+ * "Flamengo vs. Corinthians" e "Corinthians vs. Flamengo" são o mesmo par de
+ * torcidas e têm de cair no mesmo balde — senão cada clássico vira dois baldes
+ * de uma amostra cada, e nenhum dos dois diz nada.
+ */
+export const chaveConfronto = (times) =>
+  (times || []).map(chaveTime).filter(Boolean).sort().join(' x ')
 
 // Faixas de odd. Uma boost de 1.20 e uma de 8.00 não disputam o mesmo público,
 // e a fronteira está mais ou menos onde o apostador troca de intenção: proteger
@@ -83,6 +109,8 @@ export function treinar(linhas) {
   const porVertenteFamilia = new Map()
   const porFamilia = new Map()
   const porVertente = new Map()
+  const porConfronto = new Map()
+  const porTime = new Map()
 
   for (const l of validas) {
     const faixa = l.faixaOdd ?? faixaDaOdd(l.odd)
@@ -90,6 +118,15 @@ export function treinar(linhas) {
     juntar(porVertenteFamilia, `${l.vertente}|${l.familia}`, l)
     juntar(porFamilia, l.familia, l)
     juntar(porVertente, l.vertente, l)
+
+    // O confronto inteiro e cada time separado. Um time aparece em dezenas de
+    // jogos e junta amostra rápido; o confronto exato é raro e só fala quando
+    // o clássico já se repetiu algumas vezes.
+    const times = timesDe(l.event)
+    if (times.length === 2) {
+      juntar(porConfronto, chaveConfronto(times), l)
+      for (const t of times) juntar(porTime, chaveTime(t), l)
+    }
   }
 
   const converter = (mapa) => {
@@ -103,6 +140,8 @@ export function treinar(linhas) {
     vertenteFamilia: converter(porVertenteFamilia),
     familia: converter(porFamilia),
     vertente: converter(porVertente),
+    confronto: converter(porConfronto),
+    time: converter(porTime),
     geral: resumir(validas),
     // Quantas linhas trazem a odd. Enquanto o Controle de Boost não a
     // gravava, este número é zero e a faixa de odd nunca informa nada — a tela
@@ -188,6 +227,88 @@ export function prever(modelo, { vertente, familia, familiaLabel, odd, faixaOdd 
     caminho,
     confianca: confiancaDe(nEfetivo),
   }
+}
+
+/**
+ * A célula de um time, aceitando que os dois lados escrevem o nome diferente.
+ *
+ * Primeiro a chave exata. Se não achar, procura por continência — mas só com
+ * nome de quatro letras para cima: "PSG" e "CRB" casariam com qualquer coisa
+ * que os contenha, e "Bahia" contém "a".
+ */
+function celulaDoTime(modelo, nome) {
+  const chave = chaveTime(nome)
+  if (!chave) return null
+  const exata = modelo.time.get(chave)
+  if (exata) return { celula: exata, chave }
+  if (chave.length < 4) return null
+  for (const [k, celula] of modelo.time) {
+    if (k.length >= 4 && (k.includes(chave) || chave.includes(k))) return { celula, chave: k }
+  }
+  return null
+}
+
+/** Puxa um fator bruto na direção de 1 conforme a amostra é curta. */
+const encolher = (bruto, n, peso) => 1 + (bruto - 1) * (n / (n + peso))
+
+/**
+ * O porte do confronto: quanto ESTE jogo puxa, comparado ao jogo mediano.
+ *
+ * ── POR QUE POR TIME, E NÃO "algum dos dois" ─────────────────────────────────
+ * A primeira versão juntava num balde só toda linha que citasse qualquer um dos
+ * dois times e tirava uma mediana. Isso mistura o público do Flamengo com o do
+ * Remo e devolve um número que não descreve nenhum dos dois.
+ *
+ * Agora cada time tem o fator dele, medido sobre os jogos dele. Os dois se
+ * combinam pela MÉDIA GEOMÉTRICA — e não pela aritmética — porque o fator é
+ * multiplicativo: um time de 2× com um de 0,5× tem de dar 1×, e a média
+ * aritmética daria 1,25×.
+ *
+ * ── E O CONFRONTO EXATO POR CIMA ─────────────────────────────────────────────
+ * Clássico que se repete tem público próprio, acima do que os dois times
+ * sozinhos explicariam. Quando o par já apareceu no histórico, ele refina o
+ * resultado — em espaço logarítmico, pela mesma razão de ser multiplicativo.
+ */
+export function preverFator(modelo, competidores) {
+  const vazio = { fator: 1, n: 0, nivel: { id: 'nenhum', rotulo: 'sem histórico dos times' }, times: [] }
+  if (!modelo || !modelo.total || !modelo.geral.stake) return vazio
+
+  const times = (competidores || []).filter(Boolean)
+  if (times.length !== 2) return vazio
+
+  const geral = modelo.geral.stake
+  const porTime = times.map((nome) => {
+    const achado = celulaDoTime(modelo, nome)
+    if (!achado || !achado.celula.stake) return { nome, fator: 1, n: 0 }
+    return {
+      nome,
+      fator: encolher(achado.celula.stake / geral, achado.celula.n, PESO_TIME),
+      n: achado.celula.n,
+    }
+  })
+
+  const comHistorico = porTime.filter((t) => t.n > 0)
+  if (!comHistorico.length) return { ...vazio, times: porTime }
+
+  // Média geométrica dos fatores dos times.
+  let fator = Math.exp(
+    porTime.reduce((soma, t) => soma + Math.log(t.fator), 0) / porTime.length,
+  )
+  let nivel = {
+    id: 'times',
+    rotulo: comHistorico.map((t) => t.nome).join(' + '),
+    n: comHistorico.reduce((s, t) => s + t.n, 0),
+  }
+
+  const exato = modelo.confronto.get(chaveConfronto(times))
+  if (exato && exato.n && exato.stake) {
+    const peso = exato.n / (exato.n + PESO_CONFRONTO)
+    const bruto = exato.stake / geral
+    fator = Math.exp((1 - peso) * Math.log(fator) + peso * Math.log(bruto))
+    nivel = { id: 'confronto', rotulo: `${times.join(' x ')} (confronto)`, n: exato.n }
+  }
+
+  return { fator, n: nivel.n, nivel, times: porTime }
 }
 
 /** Quanto se pode confiar, pelo tamanho da amostra que mais pesou. */

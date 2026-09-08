@@ -12,10 +12,10 @@
 // caso típico, que é o que se quer estimar para o próximo jogo.
 //
 // ── ONDE MORA O APRENDIZADO ──────────────────────────────────────────────────
-// A agregação por família saiu daqui e virou `aprendizado.js`, que aprende por
-// (vertente, família, faixa de odd) com encolhimento hierárquico. Aqui ficou o
-// que é do JOGO e não do mercado: achatar o histórico e medir o porte do
-// confronto pelos times.
+// Tudo que é aprendido virou `aprendizado.js`: volume por (vertente, família,
+// faixa de odd) e porte por (time, confronto), os dois com encolhimento
+// hierárquico. Aqui ficou só o que é leitura e formato — achatar os dias e
+// separar os times de um nome de confronto.
 //
 // ── O QUE ESTE ARQUIVO NÃO FAZ ───────────────────────────────────────────────
 // Não usa o net/ROI histórico para prever lucro. Ele é agregado e mostrado na
@@ -94,40 +94,6 @@ export function timesDe(evento) {
     if (partes.length === 2) return partes
   }
   return [texto]
-}
-
-// Quanto de amostra é preciso para o fator do jogo valer inteiro. Com 5 boosts
-// no histórico dos times ele conta metade; com 20, quase tudo. Sem isso um
-// único jogo grande de um time faria o fator disparar.
-const PESO_AMOSTRA = 5
-
-/**
- * O porte do jogo, em relação ao jogo mediano.
- *
- * Um mercado puxa muito mais num clássico que num jogo de meio de tabela, e a
- * mediana da família sozinha não sabe disso. O fator é quanto as boosts dos
- * times deste jogo puxaram, comparadas com a mediana geral, encolhido na
- * direção de 1 conforme a amostra é pequena — com dois jogos no histórico o
- * fator quase não sai de 1, que é o mesmo que dizer "não sei, assume o normal".
- */
-export function fatorDoJogo(linhas, competidores) {
-  const alvos = (competidores || []).map((c) => c.toLowerCase()).filter(Boolean)
-  if (!alvos.length || !linhas.length) return { fator: 1, n: 0, medianaGeral: 0, medianaTimes: 0 }
-
-  const doJogo = linhas.filter((l) => {
-    const times = timesDe(l.event).map((t) => t.toLowerCase())
-    return times.some((t) => alvos.some((a) => t.includes(a) || a.includes(t)))
-  })
-
-  const medianaGeral = mediana(linhas.map((l) => l.stake))
-  const medianaTimes = mediana(doJogo.map((l) => l.stake))
-  if (!medianaGeral || !doJogo.length) {
-    return { fator: 1, n: doJogo.length, medianaGeral, medianaTimes }
-  }
-
-  const bruto = medianaTimes / medianaGeral
-  const peso = doJogo.length / (doJogo.length + PESO_AMOSTRA)
-  return { fator: 1 + (bruto - 1) * peso, n: doJogo.length, medianaGeral, medianaTimes, bruto }
 }
 
 /**
