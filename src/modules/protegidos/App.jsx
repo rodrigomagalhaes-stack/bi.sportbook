@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Codigos from './components/Codigos.jsx'
 import FiltroData from './components/FiltroData.jsx'
 import IdsRepetidos from './components/IdsRepetidos.jsx'
 import PainelPagamento from './components/PainelPagamento.jsx'
@@ -103,6 +104,8 @@ export default function App() {
         <p className="pr-carregando">Carregando os bilhetes…</p>
       ) : (
         <>
+          <Codigos />
+
           <div className="pr-quadros">
             <Quadro
               titulo="A pagar"

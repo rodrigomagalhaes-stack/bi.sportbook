@@ -14,6 +14,50 @@
 .pr-intro h2 { margin-bottom: 0; }
 .pr-carregando { font-size: 13px; color: var(--pb-t3); }
 
+/* ── códigos de pagamento ────────────────────────────────────────────────────
+   Faixa de referência, não um controle: nada aqui é clicável, e ela fica acima
+   das caixas porque é consultada no meio do trabalho, não antes dele. */
+
+.pr-codigos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--pb-linha);
+  border-radius: 11px;
+  background: var(--pb-surface);
+}
+
+.pr-codigos-rotulo {
+  margin-right: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--pb-t3);
+}
+
+.pr-codigo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--pb-surface-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pb-t3);
+}
+
+.pr-codigo b {
+  font-family: var(--pb-mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--pb-t1);
+}
+
 /* ── as duas caixas ──────────────────────────────────────────────────────────
    Lado a lado porque a leitura é a comparação entre elas: o que falta pagar
    contra o que já saiu. Empilhadas, uma sai da tela e a comparação se perde —
