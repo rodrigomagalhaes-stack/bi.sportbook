@@ -1,3 +1,4 @@
+import BotaoCopiar from './BotaoCopiar.jsx'
 import { SITUACOES, diasNaFila, formatarDia, situacao, usuariosPagos, valorPago } from '../lib/situacao.js'
 
 const moeda = (n) => Number(n ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -6,9 +7,9 @@ const inteiro = (n) => Number(n ?? 0).toLocaleString('pt-BR')
 /**
  * Um bilhete, como cartão.
  *
- * O cartão inteiro é o botão: clicar em qualquer parte abre o bilhete. Só o
- * link do site escapa disso — ele leva para fora, e um clique que às vezes abre
- * o painel e às vezes troca de site é um clique que ninguém confia.
+ * O corpo é o botão que abre o painel. O rodapé fica FORA dele: o "copiar
+ * link" é um botão, e botão dentro de botão não é HTML válido — o navegador
+ * desmonta a marcação e o clique passa a cair no lugar errado.
  */
 export default function Cartao({ bilhete, hoje, aoAbrir }) {
   const s = situacao(bilhete, hoje)
@@ -18,17 +19,19 @@ export default function Cartao({ bilhete, hoje, aoAbrir }) {
   const pago = s === 'pago'
 
   return (
-    <button type="button" className={`pr-cartao pr-cartao-${s}`} onClick={() => aoAbrir(bilhete)}>
-      <div className="pr-cartao-topo">
-        <strong>{bilhete.tipster_nome}</strong>
-        <span className="pr-cartao-valor">
-          {pago ? moeda(valorPago(bilhete)) : moeda(bilhete.stake)}
+    <div className={`pr-cartao pr-cartao-${s}`}>
+      <button type="button" className="pr-cartao-corpo" onClick={() => aoAbrir(bilhete)}>
+        <span className="pr-cartao-topo">
+          <strong>{bilhete.tipster_nome}</strong>
+          <span className="pr-cartao-valor">
+            {pago ? moeda(valorPago(bilhete)) : moeda(bilhete.stake)}
+          </span>
         </span>
-      </div>
 
-      <div className="pr-cartao-datas">
-        {datas.length ? datas.map(formatarDia).join(' · ') : '—'}
-      </div>
+        <span className="pr-cartao-datas">
+          {datas.length ? datas.map(formatarDia).join(' · ') : '—'}
+        </span>
+      </button>
 
       <div className="pr-cartao-pe">
         {pago ? (
@@ -57,11 +60,12 @@ export default function Cartao({ bilhete, hoje, aoAbrir }) {
                 {espera}d esperando
               </span>
             )}
+            <BotaoCopiar link={bilhete.link_bilhete} />
           </>
         )}
       </div>
 
       {bilhete.observacao && <div className="pr-cartao-obs">{bilhete.observacao}</div>}
-    </button>
+    </div>
   )
 }
