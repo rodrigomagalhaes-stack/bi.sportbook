@@ -110,7 +110,12 @@ export async function salvarBase(bilheteId, { arquivo, colUsuario, colValor, res
       })
     }
   } catch (e) {
+    // O arquivo sai junto com a linha da base. Sem isto, cada tentativa que
+    // falha deixa um CSV no bucket que nenhuma linha referencia — e a pessoa
+    // tenta de novo, sobe outra cópia, e o bucket acumula bases de pagamento
+    // com id de jogador dentro que ninguém sabe mais de onde vieram.
     await apagarBase(base.id).catch(() => {})
+    await removerArquivo(caminho)
     throw e
   }
 
@@ -125,6 +130,13 @@ export async function salvarBase(bilheteId, { arquivo, colUsuario, colValor, res
  * então a falta dele vira aviso, e não motivo para descartar um pagamento que
  * já foi conferido. `arquivo_caminho` nulo é exatamente esse caso.
  */
+/** Desfaz o envio. Falhar aqui não pode derrubar o erro original. */
+async function removerArquivo(caminho) {
+  if (!supabase || !caminho) return
+  const { error } = await supabase.storage.from(BUCKET).remove([caminho])
+  if (error) console.warn('base paga: o arquivo ficou no Storage —', error.message)
+}
+
 async function enviarArquivo(bilheteId, arquivo) {
   if (!supabase || !arquivo) return null
   const caminho = `${bilheteId}/${Date.now()}-${arquivo.name.replace(/[^\w.-]+/g, '_')}`
