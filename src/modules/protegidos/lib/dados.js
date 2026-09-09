@@ -27,6 +27,26 @@ export async function buscarBilhetes() {
   return (linhas ?? []).map(({ protegidos_bases: bases, ...b }) => ({ ...b, bases: bases ?? [] }))
 }
 
+/**
+ * Os jogadores de um bilhete: uma amostra, ou os que casam com a busca.
+ *
+ * A busca vai ao BANCO, e não filtra o que já está na tela. Uma base popular
+ * tem milhares de linhas e a tela mostra as primeiras; procurar só dentro
+ * dessas responderia "não achei" para alguém que está na base — a pior resposta
+ * possível para quem está conferindo se pagou uma pessoa específica.
+ *
+ * O termo é limpo antes de virar filtro: vírgula e parêntese são gramática do
+ * PostgREST, e um deles solto no meio do texto muda o sentido da consulta.
+ */
+export function buscarJogadores(bilheteId, termo = '', limite = 200) {
+  const limpo = String(termo).trim().replace(/[^\w.@-]/g, '').slice(0, 60)
+  const busca = limpo ? `&usuario=ilike.*${encodeURIComponent(limpo)}*` : ''
+  return rest(
+    `protegidos_base_linhas?select=usuario,valor,linha` +
+      `&bilhete_id=eq.${encodeURIComponent(bilheteId)}${busca}&order=linha&limit=${limite}`,
+  )
+}
+
 /** O cruzamento de IDs no período, agregado pelo banco. */
 export const buscarIdsRepetidos = (de, ate) =>
   rest('rpc/protegidos_ids_repetidos', { method: 'POST', body: { de, ate } })

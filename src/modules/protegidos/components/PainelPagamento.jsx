@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import AreaUpload from '../../../shell/AreaUpload.jsx'
 import Resumo from '../../../shell/Resumo.jsx'
+import ListaJogadores from './ListaJogadores.jsx'
 import { lerArquivo, letraColuna, pareceCabecalho } from '../../../lib/planilha.js'
 import { acharColunaUsuario, montarLinhas, valorDaBase } from '../lib/base.js'
 import { formatarDia, situacao, usuariosPagos, valorPago } from '../lib/situacao.js'
@@ -181,6 +182,10 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {bases.length > 0 && (
+                <ListaJogadores bilheteId={bilhete.id} total={usuariosPagos(bilhete)} />
               )}
 
               {erro && <p className="pf-erro">{erro}</p>}

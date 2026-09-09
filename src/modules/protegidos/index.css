@@ -347,6 +347,113 @@
   color: var(--pb-t3);
 }
 
+/* ── quem recebeu ────────────────────────────────────────────────────────── */
+
+.pr-jogadores {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pb-linha);
+}
+
+.pr-jogadores-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pr-busca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 320px;
+  padding: 0 11px;
+  border: 1px solid var(--pb-linha-2);
+  border-radius: 9px;
+  background: var(--pb-surface-2);
+  color: var(--pb-t3);
+}
+
+.pr-busca:focus-within {
+  border-color: var(--pb-acc);
+  color: var(--pb-acc);
+}
+
+.pr-busca input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--pb-t1);
+  font-family: var(--pb-mono);
+  font-size: 12.5px;
+}
+
+.pr-busca input:focus { outline: none; }
+.pr-busca input::placeholder { font-family: var(--pb-font); color: var(--pb-t3); }
+
+.pr-jogadores-conta {
+  flex: none;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pb-t3);
+}
+
+/* Altura fixa: a lista rola dentro de si, senão uma base de mil linhas
+   empurraria os botões de ação do painel para fora da tela. */
+.pr-jogadores-lista {
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--pb-linha);
+  border-radius: 10px;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.pr-jogadores-lista li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--pb-linha);
+}
+
+.pr-jogadores-lista li:last-child { border-bottom: 0; }
+.pr-jogadores-lista li:nth-child(odd) { background: var(--pb-surface-2); }
+
+.pr-jogador-id {
+  font-family: var(--pb-mono);
+  font-size: 12px;
+  color: var(--pb-t1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pr-jogador-valor {
+  flex: none;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pb-t3);
+}
+
+.pr-jogadores-vazio {
+  margin: 0;
+  padding: 22px 10px;
+  border: 1px solid var(--pb-linha);
+  border-radius: 10px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--pb-t3);
+}
+
 .pr-recusa {
   display: flex;
   align-items: end;
