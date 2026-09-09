@@ -519,10 +519,26 @@ Aparecer nessa lista **não é prova de nada** — seguir dois tipsters é norma
 proteção vale para os dois bilhetes. O que a coluna de tipsters distintos mostra
 é onde vale olhar.
 
-Nenhum layout de CSV é assumido: a tela pede qual coluna é o jogador e qual é o
-valor, como o Prefixador e o Ranking de UTMs já fazem. Sem coluna de valor, o
-valor fica **nulo** em vez de zero — zero afirmaria que a pessoa recebeu R$ 0,00,
-e a caixa exibiria um total com ar de número conferido.
+### O arquivo diz quem, a stake diz quanto
+
+O CSV da base traz **só a lista de quem recebe**. A primeira versão pedia
+também uma coluna de valor, e a base real desmentiu isso: ela vem com
+`PlayerId,Amount` e a `Amount` chega **vazia em todas as linhas**. A tela achava
+a coluna pelo nome, lia zero em tudo e registrava um pagamento de R$ 0,00 com ar
+de número conferido — o pior tipo de erro, porque nada nele parece errado.
+
+O valor não está no arquivo porque não precisa estar: num bingo protegido cada
+seguidor recebe de volta **a stake do bilhete**. Então o total é
+`stake × jogadores`, e a tela mostra a conta por extenso (`34 jogadores ×
+R$ 30,00 = R$ 1.020,00`) para ser conferida de cabeça antes de o dinheiro sair.
+
+Isso muda o que um ID repetido no arquivo significa: com valor por linha, era
+uma linha a mais; com valor pela stake, é **a mesma pessoa reembolsada duas
+vezes pelo mesmo bilhete**, e o total sai maior que o devido. Por isso a leitura
+entra uma vez por jogador e conta quantas repetidas descartou.
+
+A coluna do jogador continua sendo escolhida na tela, como o Prefixador e o
+Ranking de UTMs já fazem — nenhum layout é assumido.
 
 ### As três travas que moram no banco
 
