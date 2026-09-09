@@ -38,6 +38,16 @@
   button{background:var(--orange);color:#fff;border:none;padding:8px 15px;border-radius:7px;font-weight:600;font-size:13px;cursor:pointer;}
   button:hover{background:var(--orange-dark);}
   .meta{font-size:12.5px;color:var(--pb-t3);}
+  /* Busca: filtra o que ja esta na tela. A resposta do monitor traz todas as
+     boosts de uma vez, entao procurar um jogo nao custa nova ida a API — e o
+     termo sobrevive ao recarregamento automatico de 10s. */
+  .busca{display:flex;align-items:center;gap:8px;flex:1;max-width:320px;padding:0 11px;border:1px solid var(--pb-linha-2);border-radius:9px;background:var(--pb-surface-2);color:var(--pb-t3);}
+  .busca:focus-within{border-color:var(--pb-acc);color:var(--pb-acc);}
+  .busca svg{flex:none;}
+  .busca input{flex:1;min-width:0;padding:8px 0;border:0;background:none;color:var(--pb-t1);font-family:var(--mono);font-size:12.5px;}
+  .busca input:focus{outline:none;}
+  .busca input::placeholder{font-family:var(--pb-font);color:var(--pb-t3);}
+  h2.sec .conta{font-weight:400;letter-spacing:0;text-transform:none;color:var(--pb-t3);}
   .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px;}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 15px;}
   .stat .num{font-size:23px;font-weight:800;font-family:var(--mono);}
@@ -114,6 +124,10 @@
 
   <div class="controls">
     <button id="refreshBtn">Atualizar agora</button>
+    <label class="busca">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+      <input type="search" id="busca" autocomplete="off" placeholder="procurar jogo, campeonato ou item">
+    </label>
     <span class="meta" id="lastUpdate"></span>
   </div>
 
@@ -124,7 +138,7 @@
     <div id="fechadasList"></div>
   </div>
 
-  <h2 class="sec">Boosts</h2>
+  <h2 class="sec">Boosts <span class="conta" id="contaBoosts"></span></h2>
   <table>
     <thead>
       <tr>
@@ -163,10 +177,16 @@ const POLL_MS = 10000;
 const API = 'https://monitor-bilhetes-superodds.vercel.app/api';
 
 let cfg = {};
+let termo = '';          // o que esta escrito na lupa, ja normalizado
+let ultimoEstado = null; // ultima resposta do monitor, para refiltrar sem refetch
 
 const nf = (n) => Number(n ?? 0).toLocaleString('pt-BR');
 const dur = (m) => m == null ? '—' : m < 1 ? 'menos de 1 min' : m < 60 ? Math.round(m)+' min' : Math.floor(m/60)+'h'+String(Math.round(m%60)).padStart(2,'0');
 const hora = (iso) => new Date(iso).toLocaleTimeString('pt-BR');
+// Sem acento e sem caixa: "Sao Paulo" acha "São Paulo", e vice-versa.
+const normal = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const combina = (b) => !termo || normal([b.eventName, b.champName, b.kindLabel, b.itemId].join(' ')).includes(termo);
+
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 const STATUS_BADGE = {
@@ -235,7 +255,15 @@ function mostrarFalha(motivo){
 }
 
 function render(st){
+  ultimoEstado = st;
   const r = st.resumo || {};
+  // Os indicadores de cima seguem contando TUDO: eles sao o panorama do dia, e
+  // recorta-los pela busca faria "3 esgotadas" virar "1" so porque alguem
+  // procurou um jogo. O filtro vale para as listas.
+  const todas = st.boosts || [];
+  const boosts = todas.filter(combina);
+  document.getElementById('contaBoosts').textContent =
+    termo ? '— ' + boosts.length + ' de ' + todas.length : '';
 
   document.getElementById('stats').innerHTML = [
     [r.esgotados, 'Travas esgotadas', r.esgotados > 0 ? 'danger' : ''],
@@ -250,7 +278,7 @@ function render(st){
   ).join('');
 
   // Destaque: as travas que fecharam, com a hora exata quando acompanhamos a subida.
-  const fechadas = (st.boosts || []).filter(b => b.status === 'esgotado')
+  const fechadas = boosts.filter(b => b.status === 'esgotado')
     .sort((a, b) => (b.esgotadoEm || '').localeCompare(a.esgotadoEm || ''));
   const fBox = document.getElementById('fechadasBox');
   if(fechadas.length){
@@ -267,11 +295,12 @@ function render(st){
       </div>`).join('');
   } else fBox.hidden = true;
 
-  const linhas = st.boosts || [];
+  const linhas = boosts;
 
   const tbody = document.getElementById('tableBody');
   if(!linhas.length){
-    tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhuma boost no ar agora.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">' +
+      (termo ? 'Nenhuma boost combina com a busca.' : 'Nenhuma boost no ar agora.') + '</td></tr>';
   } else {
     tbody.innerHTML = linhas.map(b => {
       let [cls, texto] = STATUS_BADGE[b.status] || ['idle', b.status];
@@ -309,7 +338,7 @@ function render(st){
     }).join('');
   }
 
-  const ocultas = (st.boosts || []).filter(b => b.kind === 'oculta').length;
+  const ocultas = todas.filter(b => b.kind === 'oculta').length;
   document.getElementById('foot').innerHTML =
     // `cfg.pollSeconds` só descreve o loop contínuo (`npm run start`). Rodando
     // como função serverless, cada chamada do cron faz UMA leitura, então a
@@ -329,6 +358,10 @@ function render(st){
 }
 
 document.getElementById('refreshBtn').addEventListener('click', carregar);
+document.getElementById('busca').addEventListener('input', (e) => {
+  termo = normal(e.target.value).trim();
+  if (ultimoEstado) render(ultimoEstado);
+});
 
 carregar();
 setInterval(carregar, POLL_MS);
