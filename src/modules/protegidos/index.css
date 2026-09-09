@@ -109,13 +109,31 @@
   border: 1px solid var(--pb-linha);
   border-radius: 11px;
   background: var(--pb-surface-2);
+}
+
+.pr-cartao:hover { border-color: var(--pb-linha-2); }
+
+/* O corpo é o botão que abre o painel; o rodapé fica fora dele, porque o
+   "copiar link" é um botão e botão dentro de botão não é HTML válido. */
+.pr-cartao-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
-.pr-cartao:hover { border-color: var(--pb-linha-2); }
+.pr-cartao-corpo:focus-visible {
+  outline: 2px solid var(--pb-acc);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
 
 /* A faixa lateral é o único aviso de que este aqui já pode ser pago. A caixa
    não avisa sozinha, e um bilhete liberado no meio de dez aguardando não se
@@ -173,6 +191,44 @@
   font-family: var(--pb-mono);
   font-size: 11px;
 }
+
+/* Empurrado para a direita: o rodapé é lido da esquerda (situação, espera) e a
+   ação fica na ponta, onde a mão procura por botão. */
+.pr-copiar {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding: 3px 9px;
+  border: 1px solid var(--pb-linha-2);
+  border-radius: 999px;
+  background: var(--pb-surface);
+  color: var(--pb-t2);
+  font-family: var(--pb-font);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pr-copiar:hover {
+  border-color: var(--pb-acc);
+  color: var(--pb-acc);
+}
+
+.pr-copiar.copiado {
+  border-color: transparent;
+  background: var(--pb-verde-soft);
+  color: var(--pb-verde);
+}
+
+/* No painel ele acompanha o link, e não uma linha de rodapé. */
+.pr-ficha-bilhete dd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pr-ficha-bilhete .pr-copiar { margin-left: 0; }
 
 .pr-cartao-obs {
   padding-top: 6px;
