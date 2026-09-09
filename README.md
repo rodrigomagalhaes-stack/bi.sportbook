@@ -32,6 +32,7 @@ motivo que não tinha nada a ver com ele.
 | Ranking de UTMs | `/utms` | módulo React | nasceu aqui |
 | Prefixador de IDs | `/prefixador` | módulo React | nasceu aqui |
 | Freebets | `/freebets` | embutida | freebetspagamentos |
+| Bingos Protegidos | `/protegidos` | módulo React | nasceu aqui |
 
 **Módulo React** = componente montado dentro do portal, navegação instantânea.
 **Embutida** = a página HTML original, servida de `public/apps/` dentro de um
@@ -73,6 +74,12 @@ supabase/                  os .sql de cada módulo
 docs/                      documentação herdada dos projetos originais
 _originais/                os projetos como estavam antes de entrar no portal
 ```
+
+O formulário de cadastro dos Bingos Protegidos **não mora aqui**: ele é um
+repositório e um deploy próprios
+([Bingos-Protegidos](https://github.com/rodrigomagalhaes-stack/Bingos-Protegidos)),
+porque quem cadastra não precisa de login no portal. Os dois falam com as mesmas
+tabelas, criadas por `supabase/protegidos.sql`.
 
 ### Acrescentar uma ferramenta
 
@@ -425,6 +432,151 @@ amostra de tamanho 1.
 Se a provedora mudar os rótulos, a estimativa de volume degradaria em silêncio.
 Por isso a tela mostra sempre **% do histórico classificado** e, no diagnóstico,
 os rótulos que ficaram de fora — cada um é um candidato a virar regra nova.
+
+---
+
+## Bingos Protegidos
+
+O tipster publica um bilhete; quem seguiu a dica e perdeu recebe a stake de
+volta. Esta aba é a fila desse reembolso: o que há a pagar, o que já foi pago, e
+para quem.
+
+São **duas peças em URLs diferentes**. O cadastro do bilhete é um repositório e
+um deploy próprios
+([Bingos-Protegidos](https://github.com/rodrigomagalhaes-stack/Bingos-Protegidos)),
+para quem cadastra não precisar de login no portal. A apuração mora aqui, atrás
+do login de sempre. As duas falam com as mesmas tabelas
+(`supabase/protegidos.sql`).
+
+### O que é status e o que é data
+
+Só duas coisas são status no banco: **pago** e **recusado** — as que são decisão
+de alguém. "Aguardando confronto" e "liberado para pagar" saem da comparação
+entre a data do último jogo e hoje.
+
+Não é economia de coluna. Status que alguém precisa mover é status que um dia
+fica errado: basta o jogo acabar num domingo para a fila mentir até segunda. Da
+data, a fila se mantém sozinha — e um bilhete jamais aparece como pagável antes
+de o jogo terminar.
+
+Um bilhete com jogo marcado para **hoje** conta como aguardando. Durante o
+próprio dia dele o resultado não saiu, e os dois erros têm tamanhos diferentes:
+pagar antes de o bilhete resolver é dinheiro que sai errado; esperar é esperar.
+
+### O valor a pagar não existe até a base subir
+
+O reembolso é dos apostadores, não do tipster. O que sai do caixa é a soma do
+que **cada seguidor** apostou, e isso só se sabe quando a base é gerada — a
+`stake` cadastrada é a do bilhete que o tipster publicou.
+
+Por isso a caixa **A pagar** conta bilhetes e mostra a stake como referência,
+sem somar um "valor previsto". Um número previsto ali seria confundido com
+compromisso de caixa na primeira vez que alguém o exportasse, e não reconcilia
+com extrato nenhum. Dinheiro só aparece na caixa **Paga**, e vem somado do CSV.
+
+### Três datas existem, e o filtro usa uma só
+
+O jogo foi domingo, o cadastro entrou segunda, o pagamento saiu quinta —
+"setembro" quer dizer três coisas diferentes. O filtro da caixa **Paga** recorta
+pela **data do confronto**, a que foi preenchida no cadastro.
+
+Não é a data em que alguém clicou em "pago": essa registra quando a pessoa mexeu
+no sistema, e não diz respeito à rodada que se está conferindo. Um bilhete de
+agosto pago em setembro pertence a agosto para quem confere a rodada. A ordem
+dos cartões segue o mesmo critério, senão a lista embaralharia em relação ao
+recorte que a produziu.
+
+As outras duas datas continuam gravadas (`enviado_em`, `pago_em`) e o filtro em
+`lib/filtros.js` aceita as três — o que a tela não faz é oferecer a escolha, que
+é onde nascia a confusão de filtrar por uma e ler como se fosse outra.
+
+### A caixa A pagar não tem filtro de data
+
+E isso é decisão, não esquecimento. Ela é lista de trabalho: com um padrão de
+"últimos 7 dias", o bilhete parado há três semanas — exatamente o que não pode
+ser esquecido — sumiria da tela, e ninguém procura o que não sabe que existe.
+
+Os cartões vêm ordenados pelo que espera há mais tempo, com uma faixa amarela na
+lateral quando o jogo já terminou e o contador de dias virando vermelho a partir
+de uma semana. É o único aviso que existe, porque a caixa não avisa sozinha.
+
+A caixa **Paga** é o contrário: é relatório, e relatório sem período é uma lista
+infinita sem pergunta. Ela nasce no mês corrente.
+
+### A base paga, e o que ela abre
+
+Ao marcar o pagamento, sobe-se o CSV da base reembolsada. O arquivo vai para um
+bucket privado (auditoria) e as **linhas** viram tabela — é essa segunda metade
+que permite ver o mesmo jogador reembolsado em bilhetes de tipsters diferentes,
+na tela **IDs repetidos**, o mesmo cruzamento que o Welcome Boost já faz.
+
+O cruzamento roda no banco, numa função com as datas como argumento. Uma view
+não serviria: o agrupamento aconteceria antes do filtro de período aplicado por
+cima, e a contagem sairia do histórico inteiro. E trazer as linhas para o
+navegador seriam dezenas de MB a cada abertura de tela.
+
+Aparecer nessa lista **não é prova de nada** — seguir dois tipsters é normal, e a
+proteção vale para os dois bilhetes. O que a coluna de tipsters distintos mostra
+é onde vale olhar.
+
+Nenhum layout de CSV é assumido: a tela pede qual coluna é o jogador e qual é o
+valor, como o Prefixador e o Ranking de UTMs já fazem. Sem coluna de valor, o
+valor fica **nulo** em vez de zero — zero afirmaria que a pessoa recebeu R$ 0,00,
+e a caixa exibiria um total com ar de número conferido.
+
+### As três travas que moram no banco
+
+Cadastrar o mesmo bilhete duas vezes é reembolsar duas vezes, então a unicidade
+não fica no código de nenhuma das duas pontas:
+
+- **link duplicado** — índice único sobre o link normalizado, ignorando os
+  recusados (senão um bilhete recusado por erro de digitação ficaria bloqueado
+  para sempre pelo próprio registro descartado). A normalização baixa a caixa só
+  do domínio: código de bilhete costuma ser sensível à caixa, e `aBc12` e
+  `abc12` são bilhetes diferentes.
+- **mesmo arquivo no mesmo bilhete** — a base aceita mais de um envio (reembolso
+  sai em lote), e é isso que abre o duplo envio por engano dobrando o valor pago.
+- **chave do jogador** — coluna gerada no banco, não calculada no navegador.
+  Quem escreve nessas tabelas são dois programas diferentes, e chave calculada
+  em dois lugares é chave que um dia diverge e passa a errar em silêncio.
+
+### O formulário não tem a chave do banco
+
+A chave `anon` vai compilada em qualquer JavaScript que a use, e o RLS do portal
+resolve isso exigindo o token de quem está logado. No formulário não há ninguém
+logado: a escrita passa por uma função serverless com a *service role*, que mora
+só nas variáveis daquele projeto. A alternativa — uma política de `insert` para
+`anon` — seria mais curta e deixaria qualquer um injetando bilhete falso direto
+na fila de pagamento.
+
+O endereço é aberto: quem tiver o link cadastra. O que sobra de proteção é o
+índice único do link, no banco, e a conferência humana — nada é pago sem alguém
+abrir o cartão, ver o bilhete no site e subir a base. Se um dia isso não bastar,
+o caminho que não mexe no formulário é a *Deployment Protection* da Vercel.
+
+### O nome do tipster é digitado, e por isso é normalizado
+
+Não há cadastro de tipsters: quem preenche escreve o nome. Sem nada por cima,
+"Rodrigo" hoje e "rodrigo" amanhã seriam dois tipsters em toda soma — e depois
+de gravados não haveria como saber que eram o mesmo.
+
+Quem junta é `tipster_chave`, coluna **gerada** no banco: caixa, espaço sobrando
+e acento não separam. Ser gerada é o ponto — quem escreve nessas tabelas são
+dois programas diferentes (o BI e o formulário), e chave calculada em cada um é
+chave que um dia diverge e passa a errar em silêncio.
+
+O acento sai por `translate` com o alfabeto português, e não pela extensão
+`unaccent`: `unaccent()` é STABLE, não IMMUTABLE — depende de um dicionário que
+pode mudar —, e coluna gerada só aceita função imutável. `translate` cobre o que
+o português usa e nunca deixa de ser imutável.
+
+O que a chave **não** junta é nome de verdade diferente ("Rodrigo" e "Rodrigo
+M."). Aí não há o que adivinhar sem inventar agrupamento onde não existe.
+
+### Antes de usar
+
+Só `supabase/protegidos.sql` no SQL Editor. Ele roda numa base limpa e também
+por cima da primeira versão do arquivo, que tinha a tabela de tipsters.
 
 ---
 

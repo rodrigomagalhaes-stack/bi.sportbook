@@ -119,6 +119,13 @@ export const secoes = [
         tipo: 'nativo',
         origem: 'pickem-dashboard',
       },
+      {
+        to: '/protegidos',
+        icone: 'presente',
+        label: 'Bingos Protegidos',
+        desc: 'Fila de reembolso dos bilhetes dos tipsters: o que há a pagar, o que já foi pago e para quem.',
+        tipo: 'nativo',
+      },
     ],
   },
   {
