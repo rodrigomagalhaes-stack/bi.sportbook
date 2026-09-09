@@ -575,14 +575,14 @@ body { background:var(--bg); color:var(--text); font-family:var(--pb-font); font
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="nav-tabs">
-    <div class="nav-tab active" id="tab-import"  onclick="switchTab('import')">Importar</div>
-    <div class="nav-tab"        id="tab-history" onclick="switchTab('history')">Histórico</div>
+    <div class="nav-tab"        id="tab-import"  onclick="switchTab('import')">Importar</div>
+    <div class="nav-tab active" id="tab-history" onclick="switchTab('history')">Histórico</div>
     <div class="nav-tab"        id="tab-analise" onclick="switchTab('analise')">Análise</div>
   </div>
 </div>
 
 <!-- IMPORT PAGE -->
-<div class="page active" id="page-import">
+<div class="page" id="page-import">
   <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
     <div class="dz-icon">📂</div>
     <h3>Arraste o arquivo de export aqui</h3>
@@ -670,7 +670,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--pb-font); font
 </div>
 
 <!-- HISTORY PAGE -->
-<div class="page" id="page-history">
+<div class="page active" id="page-history">
   <div class="hist-top">
     <h2>Histórico de Boosts</h2>
     <div style="display:flex;gap:8px">
@@ -764,7 +764,14 @@ let catFilter      = 'all';     // all | semaum | sportsbook | tipster | welcome
 let hideSingleBB   = false;     // oculta BetBuilder com 1 aposta só (ruído de cauda longa)
 let sortCol        = 'stake';
 let sortDir        = -1;        // -1 = desc, 1 = asc
-let monthFilter    = 'all';     // all | 'AAAA-MM' — recorte do histórico
+// O mês em que estamos, no formato 'AAAA-MM' das pills.
+function mesCorrente() {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+// A tela abre no mês corrente, que é o recorte do dia a dia. Se ainda não houver
+// nenhum dia salvo neste mês, renderHistory volta sozinho para "Todos".
+let monthFilter    = mesCorrente();  // all | 'AAAA-MM' — recorte do histórico
 let dateFrom       = '';        // 'AAAA-MM-DD' — início do recorte por data (vazio = aberto)
 let dateTo         = '';        // 'AAAA-MM-DD' — fim do recorte por data (vazio = aberto)
 let cachedDays     = null;      // evita ir ao Supabase a cada troca de mês
@@ -2607,6 +2614,11 @@ function toast(msg,type='ok') {
   el.textContent=msg; el.className='toast show '+type;
   clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3000);
 }
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+// A página abre no Histórico (aba já marcada no HTML), no mês corrente — só
+// falta buscar os dias do banco.
+renderHistory();
 </script>
 </body>
 </html>
