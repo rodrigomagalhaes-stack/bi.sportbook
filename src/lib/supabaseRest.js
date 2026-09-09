@@ -47,6 +47,10 @@ export async function rest(caminho, { method = 'GET', body, headers = {} } = {})
     }
     throw new Error(detalhe || `erro ${res.status} na consulta ao Supabase`)
   }
-  if (res.status === 204) return null
-  return res.json()
+  // 204 não é o único caso sem corpo: um POST com `Prefer: return=minimal`
+  // responde 201 com ZERO byte. Chamar `res.json()` ali estourava com
+  // "Unexpected end of JSON input" — um erro que não diz nada a quem está na
+  // tela, e que aparecia DEPOIS de a gravação ter dado certo no banco.
+  const texto = await res.text()
+  return texto ? JSON.parse(texto) : null
 }
