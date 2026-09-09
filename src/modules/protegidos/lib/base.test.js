@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { acharColunaUsuario, acharColunaValor, montarLinhas, parseNumero } from './base.js'
+import { acharColunaUsuario, montarLinhas, valorDaBase } from './base.js'
 
-describe('detecção de colunas', () => {
-  it('acha o jogador e o valor num cabeçalho típico de base paga', () => {
-    const cab = ['user_id', 'nome', 'valor_reembolso', 'data']
-    expect(acharColunaUsuario(cab)).toBe(0)
-    expect(acharColunaValor(cab)).toBe(2)
+describe('detecção da coluna do jogador', () => {
+  it('acha o cabeçalho da base real', () => {
+    // O arquivo que a operação exporta hoje: PlayerId e uma coluna Amount que
+    // chega vazia em todas as linhas.
+    expect(acharColunaUsuario(['PlayerId', 'Amount'])).toBe(0)
   })
 
   it('ignora caixa, espaço e pontuação', () => {
-    expect(acharColunaUsuario(['CPF', 'Valor Pago'])).toBe(0)
-    expect(acharColunaValor(['CPF', 'Valor Pago'])).toBe(1)
+    expect(acharColunaUsuario(['CPF', 'nome'])).toBe(0)
+    expect(acharColunaUsuario(['nome', 'user_id'])).toBe(1)
   })
 
   it('devolve -1 quando não reconhece, para a tela pedir a escolha', () => {
@@ -19,59 +19,59 @@ describe('detecção de colunas', () => {
   })
 })
 
-describe('números', () => {
-  it('lê os dois formatos que saem do mesmo relatório', () => {
-    expect(parseNumero('1.234,56')).toBeCloseTo(1234.56, 2)
-    expect(parseNumero('1234.56')).toBeCloseTo(1234.56, 2)
-    expect(parseNumero('R$ 50,00')).toBeCloseTo(50, 2)
+describe('valor da base', () => {
+  it('é a stake do bilhete vezes quantos receberam', () => {
+    // O caso real: 34 jogadores num bilhete de R$ 30,00.
+    expect(valorDaBase(30, 34)).toBe(1020)
   })
 
-  it('vazio e lixo viram zero, não NaN', () => {
-    expect(parseNumero('')).toBe(0)
-    expect(parseNumero('—')).toBe(0)
-    expect(parseNumero(null)).toBe(0)
+  it('arredonda em centavos', () => {
+    // 10.10 * 3 dá 30.299999999999997 em ponto flutuante, e este número vira o
+    // total que o financeiro confere.
+    expect(valorDaBase(10.1, 3)).toBe(30.3)
+  })
+
+  it('base vazia não vira pagamento', () => {
+    expect(valorDaBase(30, 0)).toBe(0)
+    expect(valorDaBase(null, 5)).toBe(0)
   })
 })
 
 describe('montagem das linhas', () => {
   const CORPO = [
-    ['1001', '25,00'],
-    ['1002', '10,50'],
-    ['', '99,00'],
-    ['1001', '25,00'],
+    ['esportivabetbr_001', ''],
+    ['esportivabetbr_002', ''],
+    ['', ''],
+    ['ESPORTIVABETBR_001', ''],
   ]
 
   it('descarta linha sem jogador e conta quantas foram', () => {
-    const { linhas, resumo } = montarLinhas(CORPO, { colUsuario: 0, colValor: 1 })
-    expect(linhas).toHaveLength(3)
-    expect(resumo.semUsuario).toBe(1)
-    expect(resumo.total).toBe(4)
-  })
-
-  it('soma o valor e conta usuários distintos', () => {
-    const { resumo } = montarLinhas(CORPO, { colUsuario: 0, colValor: 1 })
-    expect(resumo.valorTotal).toBeCloseTo(60.5, 2)
-    expect(resumo.usuarios).toBe(2)
-    expect(resumo.validas).toBe(3)
-  })
-
-  it('acusa o mesmo jogador repetido dentro do arquivo', () => {
-    // Dois reembolsos para a mesma pessoa pelo mesmo bilhete. Dá para pegar
-    // antes de o dinheiro sair, e é por isso que o número aparece na conferência.
-    expect(montarLinhas(CORPO, { colUsuario: 0, colValor: 1 }).resumo.repetidos).toBe(1)
-  })
-
-  it('sem coluna de valor, o valor fica nulo em vez de zero', () => {
     const { linhas, resumo } = montarLinhas(CORPO, { colUsuario: 0 })
-    expect(linhas[0].valor).toBe(null)
-    expect(resumo.comValor).toBe(false)
-    expect(resumo.valorTotal).toBe(0)
+    expect(resumo.total).toBe(4)
+    expect(resumo.semUsuario).toBe(1)
+    expect(linhas).toHaveLength(2)
+  })
+
+  it('o mesmo jogador entra uma vez só', () => {
+    // Com o valor vindo da stake, um ID repetido no arquivo seria a mesma
+    // pessoa reembolsada duas vezes pelo mesmo bilhete, e o total sairia maior
+    // que o devido.
+    const { linhas, resumo } = montarLinhas(CORPO, { colUsuario: 0 })
+    expect(resumo.jogadores).toBe(2)
+    expect(resumo.repetidos).toBe(1)
+    expect(linhas.map((l) => l.usuario)).toEqual(['esportivabetbr_001', 'esportivabetbr_002'])
   })
 
   it('guarda a posição no arquivo, contando o cabeçalho', () => {
     // A conferência sempre termina com alguém abrindo o CSV para achar uma
     // pessoa; a linha precisa bater com a que o Excel mostra.
-    const { linhas } = montarLinhas(CORPO, { colUsuario: 0, colValor: 1, deslocamento: 1 })
+    const { linhas } = montarLinhas(CORPO, { colUsuario: 0, deslocamento: 1 })
     expect(linhas[0].linha).toBe(2)
+    expect(linhas[1].linha).toBe(3)
+  })
+
+  it('arquivo vazio não quebra', () => {
+    expect(montarLinhas([], { colUsuario: 0 }).linhas).toEqual([])
+    expect(montarLinhas(null, { colUsuario: 0 }).resumo.jogadores).toBe(0)
   })
 })

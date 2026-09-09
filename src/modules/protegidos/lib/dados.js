@@ -3,6 +3,7 @@
 // nos testes, que não sobem navegador nenhum.
 import { rest, usuarioAtual } from '../../../lib/supabaseRest.js'
 import { supabase } from '../../../lib/supabase.js'
+import { valorDaBase } from './base.js'
 
 const BUCKET = 'protegidos-bases'
 
@@ -73,8 +74,9 @@ export const apagarBase = (id) =>
  * com metade das linhas por trás dele, e o número passaria despercebido porque
  * está certo na tabela e errado na realidade.
  */
-export async function salvarBase(bilheteId, { arquivo, colUsuario, colValor, resumo, linhas }) {
+export async function salvarBase(bilheteId, { arquivo, colUsuario, stake, resumo, linhas }) {
   const caminho = await enviarArquivo(bilheteId, arquivo)
+  const valorTotal = valorDaBase(stake, resumo.jogadores)
 
   const [base] = await rest('protegidos_bases', {
     method: 'POST',
@@ -82,11 +84,10 @@ export async function salvarBase(bilheteId, { arquivo, colUsuario, colValor, res
       bilhete_id: bilheteId,
       arquivo_nome: arquivo.name,
       arquivo_caminho: caminho,
-      linhas: resumo.validas,
-      usuarios: resumo.usuarios,
-      valor_total: resumo.comValor ? resumo.valorTotal : 0,
+      linhas: resumo.jogadores,
+      usuarios: resumo.jogadores,
+      valor_total: valorTotal,
       col_usuario: colUsuario,
-      col_valor: colValor,
       enviado_por: await usuarioAtual(),
     },
     headers: { Prefer: 'return=representation' },
@@ -99,11 +100,13 @@ export async function salvarBase(bilheteId, { arquivo, colUsuario, colValor, res
     for (let i = 0; i < linhas.length; i += LOTE) {
       await rest('protegidos_base_linhas', {
         method: 'POST',
+        // O valor de cada linha é a stake: num bingo protegido cada seguidor
+        // recebe de volta o que apostou, e o arquivo diz quem, não quanto.
         body: linhas.slice(i, i + LOTE).map((l) => ({
           base_id: base.id,
           bilhete_id: bilheteId,
           usuario: l.usuario,
-          valor: l.valor,
+          valor: stake,
           linha: l.linha,
         })),
         headers: { Prefer: 'return=minimal' },
@@ -130,13 +133,6 @@ export async function salvarBase(bilheteId, { arquivo, colUsuario, colValor, res
  * então a falta dele vira aviso, e não motivo para descartar um pagamento que
  * já foi conferido. `arquivo_caminho` nulo é exatamente esse caso.
  */
-/** Desfaz o envio. Falhar aqui não pode derrubar o erro original. */
-async function removerArquivo(caminho) {
-  if (!supabase || !caminho) return
-  const { error } = await supabase.storage.from(BUCKET).remove([caminho])
-  if (error) console.warn('base paga: o arquivo ficou no Storage —', error.message)
-}
-
 async function enviarArquivo(bilheteId, arquivo) {
   if (!supabase || !arquivo) return null
   const caminho = `${bilheteId}/${Date.now()}-${arquivo.name.replace(/[^\w.-]+/g, '_')}`
@@ -149,6 +145,13 @@ async function enviarArquivo(bilheteId, arquivo) {
     return null
   }
   return caminho
+}
+
+/** Desfaz o envio. Falhar aqui não pode derrubar o erro original. */
+async function removerArquivo(caminho) {
+  if (!supabase || !caminho) return
+  const { error } = await supabase.storage.from(BUCKET).remove([caminho])
+  if (error) console.warn('base paga: o arquivo ficou no Storage —', error.message)
 }
 
 /** Link temporário para baixar o arquivo de uma base. */

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import AreaUpload from '../../../shell/AreaUpload.jsx'
 import Resumo from '../../../shell/Resumo.jsx'
 import { lerArquivo, letraColuna, pareceCabecalho } from '../../../lib/planilha.js'
-import { acharColunaUsuario, acharColunaValor, montarLinhas } from '../lib/base.js'
+import { acharColunaUsuario, montarLinhas, valorDaBase } from '../lib/base.js'
 import { formatarDia, situacao, usuariosPagos, valorPago } from '../lib/situacao.js'
 import { linkDaBase, marcarPago, recusar, salvarBase } from '../lib/dados.js'
 
@@ -21,7 +21,6 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
   const [dados, setDados] = useState(null)
   const [temCabecalho, setTemCabecalho] = useState(true)
   const [colUsuario, setColUsuario] = useState(-1)
-  const [colValor, setColValor] = useState(-1)
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [motivo, setMotivo] = useState('')
@@ -42,7 +41,6 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
       setTemCabecalho(comCabecalho)
       const iu = acharColunaUsuario(cab)
       setColUsuario(iu >= 0 ? iu : 0)
-      setColValor(acharColunaValor(cab))
       if (cab && iu < 0) {
         setErro('Não reconheci a coluna do jogador pelo nome — escolha a coluna certa abaixo.')
       }
@@ -59,23 +57,19 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
   }, [dados, temCabecalho])
 
   const { linhas, resumo } = useMemo(
-    () => montarLinhas(corpo, { colUsuario, colValor, deslocamento: temCabecalho ? 1 : 0 }),
-    [corpo, colUsuario, colValor, temCabecalho],
+    () => montarLinhas(corpo, { colUsuario, deslocamento: temCabecalho ? 1 : 0 }),
+    [corpo, colUsuario, temCabecalho],
   )
 
   const largura = corpo.length ? Math.max(...corpo.map((l) => l.length)) : 0
   const nomeColuna = (i) => (i < 0 ? null : cabecalho?.[i]?.trim() || `Coluna ${letraColuna(i)}`)
 
-  const opcoes = (comNenhuma) => (
-    <>
-      {comNenhuma && <option value={-1}>— não usar —</option>}
-      {Array.from({ length: largura }, (_, i) => (
-        <option key={i} value={i}>
-          {cabecalho?.[i]?.trim() ? `${cabecalho[i]} (${letraColuna(i)})` : `Coluna ${letraColuna(i)}`}
-        </option>
-      ))}
-    </>
-  )
+  const opcoes = () =>
+    Array.from({ length: largura }, (_, i) => (
+      <option key={i} value={i}>
+        {cabecalho?.[i]?.trim() ? `${cabecalho[i]} (${letraColuna(i)})` : `Coluna ${letraColuna(i)}`}
+      </option>
+    ))
 
   async function confirmar(comBase) {
     setSalvando(true)
@@ -85,7 +79,7 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
         await salvarBase(bilhete.id, {
           arquivo: dados.file,
           colUsuario: nomeColuna(colUsuario),
-          colValor: nomeColuna(colValor),
+          stake: bilhete.stake,
           resumo,
           linhas,
         })
@@ -182,8 +176,7 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
                         {b.arquivo_nome}
                       </button>
                       <span>
-                        {inteiro(b.linhas)} linhas · {inteiro(b.usuarios)} jogadores ·{' '}
-                        {moeda(b.valor_total)}
+                        {inteiro(b.usuarios)} jogadores · {moeda(b.valor_total)}
                       </span>
                     </li>
                   ))}
@@ -234,18 +227,7 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
                         value={colUsuario}
                         onChange={(e) => setColUsuario(Number(e.target.value))}
                       >
-                        {opcoes(false)}
-                      </select>
-                    </label>
-
-                    <label className="pf-campo">
-                      <span>Coluna do valor</span>
-                      <select
-                        className="pf-input"
-                        value={colValor}
-                        onChange={(e) => setColValor(Number(e.target.value))}
-                      >
-                        {opcoes(true)}
+                        {opcoes()}
                       </select>
                     </label>
 
@@ -261,8 +243,7 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
 
                   <Resumo
                     itens={[
-                      { label: 'jogadores na base', valor: resumo.usuarios, sempre: true, tom: 'ok' },
-                      { label: 'linhas válidas', valor: resumo.validas, sempre: true },
+                      { label: 'jogadores na base', valor: resumo.jogadores, sempre: true, tom: 'ok' },
                       {
                         label: 'linhas sem jogador',
                         valor: resumo.semUsuario,
@@ -270,25 +251,21 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
                         dica: 'Ficam de fora da gravação — confira se a coluna escolhida é a certa.',
                       },
                       {
-                        label: 'jogadores repetidos no arquivo',
+                        label: 'repetidos, descartados',
                         valor: resumo.repetidos,
                         tom: 'erro',
-                        dica: 'A mesma pessoa aparece mais de uma vez nesta base: reembolso dobrado pelo mesmo bilhete.',
+                        dica: 'O mesmo jogador aparecia mais de uma vez no arquivo. Entra uma vez só: senão seria a mesma pessoa reembolsada duas vezes pelo mesmo bilhete.',
                       },
                     ]}
                   />
 
-                  {resumo.comValor ? (
-                    <p className="pr-total">
-                      Total a registrar como reembolsado:{' '}
-                      <strong>{moeda(resumo.valorTotal)}</strong>
-                    </p>
-                  ) : (
-                    <p className="pf-hint">
-                      Sem coluna de valor escolhida, a base entra só com os jogadores — a caixa Paga
-                      mostra quantas pessoas receberam, mas não quanto saiu.
-                    </p>
-                  )}
+                  {/* O arquivo diz QUEM recebe; a stake do bilhete diz QUANTO.
+                      A conta aparece por extenso para poder ser conferida de
+                      cabeça antes de o dinheiro sair. */}
+                  <p className="pr-total">
+                    {resumo.jogadores} jogadores × {moeda(bilhete.stake)} ={' '}
+                    <strong>{moeda(valorDaBase(bilhete.stake, resumo.jogadores))}</strong>
+                  </p>
 
                   {erro && <p className="pf-erro">{erro}</p>}
                 </>
@@ -358,7 +335,7 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
                 <button
                   type="button"
                   className="pf-btn primario"
-                  disabled={salvando || !dados || resumo.validas === 0}
+                  disabled={salvando || !dados || resumo.jogadores === 0}
                   onClick={() => confirmar(true)}
                 >
                   {salvando ? 'Gravando…' : 'Anexar base e marcar paga'}
