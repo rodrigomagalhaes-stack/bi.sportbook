@@ -1,0 +1,377 @@
+/* Estilo próprio dos Bingos Protegidos. O chrome (blocos, tabela, indicadores,
+   upload) vem de shell/ferramenta.css; aqui mora o que é desta tela — as duas
+   caixas, os cartões e o painel do bilhete.
+
+   As variantes de `pf-tag` ganham prefixo `pr-` de propósito: o arquivo
+   compartilhado só define a variante de erro, e criar `.pf-tag.ok` aqui seria
+   escrever numa classe global de dentro de um módulo — a próxima ferramenta
+   herdaria a regra sem saber de onde ela veio. */
+
+/* O título vive dentro da barra, ao lado dos botões. A margem que o `pf-intro`
+   reserva embaixo existia para separar do parágrafo explicativo; sem ele, ela
+   só desalinha o título em relação aos botões. */
+.pr-intro { margin-bottom: 0; }
+.pr-intro h2 { margin-bottom: 0; }
+.pr-carregando { font-size: 13px; color: var(--pb-t3); }
+
+/* ── as duas caixas ──────────────────────────────────────────────────────────
+   Lado a lado porque a leitura é a comparação entre elas: o que falta pagar
+   contra o que já saiu. Empilhadas, uma sai da tela e a comparação se perde —
+   por isso só viram coluna única quando a largura não dá mesmo. */
+
+.pr-quadros {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1040px) {
+  .pr-quadros { grid-template-columns: minmax(0, 1fr); }
+}
+
+.pr-quadro {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--pb-linha);
+  border-radius: 13px;
+  background: var(--pb-surface);
+  box-shadow: var(--pb-sombra);
+}
+
+.pr-quadro-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--pb-linha);
+}
+
+.pr-quadro-topo h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.pr-quadro-num {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--pb-surface-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pb-t3);
+}
+
+.pr-quadro-resumo {
+  font-size: 11.5px;
+  color: var(--pb-t3);
+  text-align: right;
+}
+
+.pr-quadro-filtro {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--pb-linha);
+  background: var(--pb-surface-2);
+}
+
+.pr-quadro-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  max-height: 64vh;
+  padding: 13px 16px;
+  overflow-y: auto;
+}
+
+.pr-quadro-vazio {
+  margin: 0;
+  padding: 30px 8px;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--pb-t3);
+}
+
+/* ── o cartão ────────────────────────────────────────────────────────────── */
+
+.pr-cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--pb-linha);
+  border-radius: 11px;
+  background: var(--pb-surface-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pr-cartao:hover { border-color: var(--pb-linha-2); }
+
+/* A faixa lateral é o único aviso de que este aqui já pode ser pago. A caixa
+   não avisa sozinha, e um bilhete liberado no meio de dez aguardando não se
+   destaca por mais nada. */
+.pr-cartao-liberado { border-left: 3px solid var(--pb-amarelo); }
+.pr-cartao-pago { border-left: 3px solid var(--pb-verde); }
+.pr-cartao-recusado { opacity: 0.55; }
+
+.pr-cartao-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pr-cartao-topo strong {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--pb-t1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-cartao-valor {
+  flex: none;
+  font-size: 13.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--pb-t1);
+}
+
+.pr-cartao-datas {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pb-t2);
+}
+
+.pr-cartao-pe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--pb-t3);
+}
+
+.pr-cartao-pe .pf-tag { margin-left: 0; }
+
+.pr-cartao-arquivo {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--pb-mono);
+  font-size: 11px;
+}
+
+.pr-cartao-obs {
+  padding-top: 6px;
+  border-top: 1px solid var(--pb-linha);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--pb-t3);
+}
+
+/* ── etiquetas e espera ──────────────────────────────────────────────────── */
+
+.pr-tag-ok { background: var(--pb-verde-soft); color: var(--pb-verde); }
+.pr-tag-alerta { background: var(--pb-amarelo-soft); color: var(--pb-amarelo); }
+.pr-tag-erro { background: var(--pb-vermelho-soft); color: var(--pb-vermelho); }
+
+.pr-espera { font-variant-numeric: tabular-nums; }
+.pr-espera-media { color: var(--pb-amarelo); font-weight: 600; }
+
+.pr-espera-alta {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--pb-vermelho-soft);
+  color: var(--pb-vermelho);
+  font-weight: 600;
+}
+
+/* ── filtro da caixa Paga ────────────────────────────────────────────────── */
+
+.pr-abas-filtro { flex-wrap: wrap; }
+.pr-abas-filtro .pf-aba { padding: 5px 10px; font-size: 11.5px; }
+
+.pr-intervalo {
+  display: flex;
+  gap: 9px;
+  margin-top: 9px;
+}
+
+.pr-intervalo .pf-campo { flex: 1; }
+
+.pr-ver-recusados { margin-top: 14px; }
+
+/* ── painel do bilhete ───────────────────────────────────────────────────── */
+
+.pr-fundo {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 18, 16, 0.42);
+  backdrop-filter: blur(2px);
+}
+
+.pr-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 100%);
+  max-height: 90vh;
+  border: 1px solid var(--pb-linha);
+  border-radius: 15px;
+  background: var(--pb-surface);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.pr-modal-topo,
+.pr-modal-pe {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+}
+
+.pr-modal-topo { border-bottom: 1px solid var(--pb-linha); }
+
+.pr-modal-topo h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.pr-modal-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+  overflow: auto;
+}
+
+.pr-modal-corpo .pf-hint { text-align: left; }
+
+.pr-modal-pe {
+  border-top: 1px solid var(--pb-linha);
+  background: var(--pb-surface-2);
+}
+
+.pr-recusar { color: var(--pb-vermelho); }
+
+.pr-ficha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin: 0;
+}
+
+.pr-ficha dt {
+  margin-bottom: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--pb-t3);
+}
+
+.pr-ficha dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pb-t1);
+}
+
+.pr-arquivo-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.pr-arquivo-linha span { font-size: 12px; color: var(--pb-t3); }
+
+.pr-mapa {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+
+.pr-check-solto { padding-bottom: 7px; }
+
+.pr-total {
+  margin: 0;
+  font-size: 13px;
+  color: var(--pb-t2);
+}
+
+.pr-total strong {
+  font-size: 15px;
+  color: var(--pb-t1);
+  font-variant-numeric: tabular-nums;
+}
+
+.pr-bases {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pr-bases li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--pb-t3);
+}
+
+.pr-recusa {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pb-linha);
+}
+
+.pr-recusa .pf-campo { flex: 1; }
+
+/* ── tipsters e ids repetidos ────────────────────────────────────────────── */
+
+.pr-novo-tipster {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+
+.pr-novo-tipster .pf-campo { flex: 1; max-width: 340px; }
+
+.pr-sub {
+  margin-left: 10px;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--pb-t3);
+}
+
+.pr-suspeito td { background: var(--pb-vermelho-soft); }
