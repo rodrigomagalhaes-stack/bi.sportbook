@@ -1,0 +1,67 @@
+/* Só o que é do Conversor: a linha "entrou → sai" e as abas da planilha. O
+   resto da tela é o chrome `pf-` de shell/ferramenta.css. */
+
+.cv-rota {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--pb-acc-linha);
+  border-radius: 10px;
+  background: var(--pb-acc-soft);
+  font-family: var(--pb-mono);
+  font-size: 12px;
+  color: var(--pb-t2);
+}
+
+/* O nome do arquivo é dado do usuário e pode ser enorme: ele encolhe até caber
+   em vez de esticar o bloco. */
+.cv-arquivo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-saida {
+  color: var(--pb-acc-2);
+  font-weight: 600;
+}
+
+.cv-abas {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.cv-abas .pf-aba {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* Quantas linhas a aba tem — o número decide qual delas o usuário quer. */
+.cv-conta {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--pb-surface-2);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pb-t3);
+}
+
+.pf-aba.ativa .cv-conta {
+  background: var(--pb-acc-soft);
+  color: var(--pb-acc-2);
+}
+
+.cv-nota {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--pb-linha);
+  border-radius: 10px;
+  background: var(--pb-surface-2);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pb-t2);
+}

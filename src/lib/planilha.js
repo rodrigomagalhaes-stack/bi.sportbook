@@ -1,5 +1,5 @@
 import Papa from 'papaparse'
-import * as XLSX from 'xlsx'
+import XLSX from 'xlsx-js-style'
 
 // Lê csv/txt/xlsx sempre para o mesmo formato — matriz de strings, sem
 // cabeçalho assumido. Quem decide se a primeira linha é cabeçalho é a tela

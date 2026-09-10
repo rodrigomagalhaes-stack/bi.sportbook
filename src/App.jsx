@@ -14,6 +14,7 @@ const Prefixador = lazy(() => import('./modules/prefixador/index.jsx'))
 const UtmRanking = lazy(() => import('./modules/utm-ranking/index.jsx'))
 const Recomendador = lazy(() => import('./modules/recomendador/index.jsx'))
 const Protegidos = lazy(() => import('./modules/protegidos/index.jsx'))
+const Conversor = lazy(() => import('./modules/conversor/index.jsx'))
 
 const Carregando = () => <div className="pb-boot"><div className="pb-boot-spinner" /></div>
 
@@ -57,6 +58,8 @@ export default function App() {
         <Route path="/recomendador" element={comSuspense(<Recomendador />)} />
 
         <Route path="/protegidos" element={comSuspense(<Protegidos />)} />
+
+        <Route path="/conversor" element={comSuspense(<Conversor />)} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
