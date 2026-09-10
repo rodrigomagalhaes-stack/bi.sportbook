@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import * as XLSX from "xlsx";
+import XLSX from "xlsx-js-style";
 import { S } from "../styles";
 import { IconArrow, IconUpload, IconChart, IconSave, IconDownload } from "../icons";
 import { fmt, fmtDate, downloadIds } from "../lib/format";

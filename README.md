@@ -30,6 +30,7 @@ motivo que não tinha nada a ver com ele.
 | Quiz | `/quiz` | módulo React | pickem-dashboard |
 | Analisador Bet List | `/analisador-bet-list` | embutida | analisador-bet-list |
 | Ranking de UTMs | `/utms` | módulo React | nasceu aqui |
+| Conversor de Planilhas | `/conversor` | módulo React | nasceu aqui |
 | Prefixador de IDs | `/prefixador` | módulo React | nasceu aqui |
 | Freebets | `/freebets` | embutida | freebetspagamentos |
 | Bingos Protegidos | `/protegidos` | módulo React | nasceu aqui |
@@ -593,6 +594,77 @@ M."). Aí não há o que adivinhar sem inventar agrupamento onde não existe.
 
 Só `supabase/protegidos.sql` no SQL Editor. Ele roda numa base limpa e também
 por cima da primeira versão do arquivo, que tinha a tabela de tipsters.
+
+---
+
+## Conversor de Planilhas
+
+Sobe um arquivo, baixa ele no outro formato. `/conversor` não tem botão de
+direção: `.xlsx`, `.xls` e `.ods` saem em csv, `.csv`, `.txt` e `.tsv` saem em
+xlsx. A conversão inteira acontece no navegador — nenhum arquivo é enviado a
+lugar nenhum.
+
+Duas decisões que a tela toma sozinha, e que são o motivo da ferramenta
+existir em vez de um "Salvar como" do Excel:
+
+**O id não vira número.** Indo para xlsx, a célula só é convertida em número
+quando isso não perde nada: nada de zero à esquerda (`00123` é código, não
+quantidade) e nada com mais de 15 dígitos, que é onde a precisão do Excel
+acaba e o final do id se perde. O resto vai como texto — é o que evita o
+`2,84359e+07` no lugar do PlayerId. Quem quiser tudo como texto desliga a
+opção *Reconhecer números*.
+
+**O acento sobrevive à volta.** Um csv não guarda em que codificação foi
+salvo. A leitura tenta UTF-8 em modo estrito e, quando o arquivo não é UTF-8
+válido, cai para Windows-1252 — o padrão do Excel em português — em vez de
+entregar `A��o`. Na saída acontece o inverso: o csv sai em UTF-8 com BOM,
+porque sem ele o Excel abre os acentos errados. A opção existe para quem vai
+ler o arquivo por código, onde o BOM atrapalha.
+
+Vindo do xlsx, cada aba vira um csv (o formato não tem como guardar a
+segunda), com a escolha de separador — ponto-e-vírgula é o padrão porque é o
+que o Excel em português espera ao abrir o arquivo com dois cliques.
+
+**A planilha sai formatada.** Cabeçalho em negrito no laranja da marca com
+autofiltro, colunas na largura do conteúdo, linhas listradas e milhar com duas
+casas — mas só na coluna que tem decimal de verdade. Coluna de id fica em
+`General` de propósito: com separador de milhar o `28435851` viraria
+`28.435.851`, que não é o id de ninguém. A opção *Formatar a planilha* desliga
+tudo isso para quem quer o arquivo cru.
+
+O cabeçalho que a formatação destaca é o mesmo que a prévia mostrou como
+cabeçalho (`pareceCabecalho`) — a planilha não promove a negrito uma linha que
+a tela tratou como dado.
+
+### O xlsx que o portal usa é um fork
+
+`xlsx-js-style` no lugar do `xlsx`. É o mesmo SheetJS 0.18.5 da comunidade,
+mesma API — só acrescenta a propriedade `s` da célula, que é o que vira
+negrito, cor e borda no arquivo. O SheetJS original escreve uma fonte, duas
+fills e uma borda fixas: com ele o cabeçalho sairia idêntico ao resto, por mais
+estilo que o código pedisse. Congelar a primeira linha continua impossível nos
+dois (nenhum escreve o `<pane>` da planilha) — se um dia for necessário, aí sim
+entra outra biblioteca.
+
+Dois cuidados que vieram junto:
+
+- **`vite-shim-cpexcel.cjs`.** O fork é CommonJS e faz `require('./cpexcel.js')`
+  dentro de um guarda que o bundler resolve como verdadeiro, o que arrastava
+  ~470 KB de tabelas de codepage para dentro do pacote — o `xlsx` anterior
+  (build ESM) nunca as trazia, porque no SheetJS o codepage é opcional. O
+  atalho em `vite.config.js` devolve `undefined` e recria aquele estado: o
+  chunk voltou de 318 KB para 144 KB gzip, sem mudança de comportamento.
+- **Estilo é por célula, nunca compartilhado.** Na hora de escrever, a lib
+  funde o formato numérico dentro do objeto de estilo da célula. Com um objeto
+  reaproveitado entre células, o `#,##0.00` da coluna de valor vazava para a
+  coluna de id ao lado — está preso por teste em `src/lib/exportar.test.js`.
+- **O alerta do `npm audit` mudou de nome, não sumiu.** O aviso que existia
+  sobre o `xlsx@0.18.5` (prototype pollution e ReDoS) vale igual para o fork,
+  que é o mesmo código-base; ele só não é sinalizado porque o pacote tem outro
+  nome. A correção do SheetJS existe da versão 0.20 em diante e é distribuída
+  fora do npm. O que limita o risco aqui é que todo arquivo é aberto no
+  navegador de quem já está autenticado no portal, sobre um arquivo que essa
+  mesma pessoa escolheu.
 
 ---
 

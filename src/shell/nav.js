@@ -151,6 +151,13 @@ export const secoes = [
         tipo: 'nativo',
       },
       {
+        to: '/conversor',
+        icone: 'planilha',
+        label: 'Conversor de Planilhas',
+        desc: 'Sobe xlsx e baixa csv, sobe csv e baixa xlsx. A direção sai da extensão do arquivo.',
+        tipo: 'nativo',
+      },
+      {
         to: '/prefixador',
         icone: 'etiqueta',
         label: 'Prefixador de IDs',

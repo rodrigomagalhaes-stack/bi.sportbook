@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import prefixSelector from 'postcss-prefix-selector'
@@ -36,6 +37,23 @@ const escopar = prefixSelector({
 
 export default defineConfig({
   plugins: [react(), apiDev()],
+  resolve: {
+    // Ver o comentário dentro do próprio atalho: ele tira do bundle as ~470 KB
+    // de tabelas de codepage que o xlsx-js-style arrasta e que a versão
+    // anterior da lib (build ESM do xlsx) nunca trouxe.
+    alias: [
+      {
+        // O casamento cobre a especificação inteira de propósito: o alias por
+        // regex troca só o trecho casado, e casar apenas o fim deixaria o
+        // "./" do require grudado no caminho novo.
+        find: /^.*[\\/]cpexcel\.js$/,
+        replacement: fileURLToPath(new URL('./vite-shim-cpexcel.cjs', import.meta.url)).replace(
+          /\\/g,
+          '/',
+        ),
+      },
+    ],
+  },
   define: {
     // Id novo a cada build. A moldura acrescenta ele na URL do iframe, para
     // uma versão antiga de uma página embutida não ficar presa no cache do
