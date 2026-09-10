@@ -1,5 +1,13 @@
 import BotaoCopiar from './BotaoCopiar.jsx'
-import { SITUACOES, diasNaFila, formatarDia, situacao, usuariosPagos, valorPago } from '../lib/situacao.js'
+import {
+  SITUACOES,
+  diasEmAnalise,
+  diasNaFila,
+  formatarDia,
+  situacao,
+  usuariosPagos,
+  valorPago,
+} from '../lib/situacao.js'
 
 const moeda = (n) => Number(n ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const inteiro = (n) => Number(n ?? 0).toLocaleString('pt-BR')
@@ -13,7 +21,8 @@ const inteiro = (n) => Number(n ?? 0).toLocaleString('pt-BR')
  */
 export default function Cartao({ bilhete, hoje, aoAbrir }) {
   const s = situacao(bilhete, hoje)
-  const espera = diasNaFila(bilhete, hoje)
+  // Na análise a espera conta desde o envio; na fila, desde o fim do jogo.
+  const espera = s === 'pendente' ? diasEmAnalise(bilhete, hoje) : diasNaFila(bilhete, hoje)
   const datas = bilhete.datas_confrontos ?? []
   const bases = bilhete.bases ?? []
   const pago = s === 'pago'

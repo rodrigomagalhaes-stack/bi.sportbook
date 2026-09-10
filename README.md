@@ -76,11 +76,11 @@ docs/                      documentação herdada dos projetos originais
 _originais/                os projetos como estavam antes de entrar no portal
 ```
 
-O formulário de cadastro dos Bingos Protegidos **não mora aqui**: ele é um
+O formulário de solicitações dos Bingos Protegidos **não mora aqui**: ele é um
 repositório e um deploy próprios
 ([Bingos-Protegidos](https://github.com/rodrigomagalhaes-stack/Bingos-Protegidos)),
-porque quem cadastra não precisa de login no portal. Os dois falam com as mesmas
-tabelas, criadas por `supabase/protegidos.sql`.
+porque os tipsters entram com uma conta de lá, e não com o login do portal. Os
+dois falam com as mesmas tabelas, criadas por `supabase/protegidos.sql`.
 
 ### Acrescentar uma ferramenta
 
@@ -439,21 +439,33 @@ os rótulos que ficaram de fora — cada um é um candidato a virar regra nova.
 ## Bingos Protegidos
 
 O tipster publica um bilhete; quem seguiu a dica e perdeu recebe a stake de
-volta. Esta aba é a fila desse reembolso: o que há a pagar, o que já foi pago, e
-para quem.
+volta. Esta aba é a análise e a fila desse reembolso: o que pede aprovação, o que
+há a pagar, o que já foi pago, e para quem.
 
-São **duas peças em URLs diferentes**. O cadastro do bilhete é um repositório e
-um deploy próprios
+São **duas peças em URLs diferentes**. A solicitação do tipster é um repositório
+e um deploy próprios
 ([Bingos-Protegidos](https://github.com/rodrigomagalhaes-stack/Bingos-Protegidos)),
-para quem cadastra não precisar de login no portal. A apuração mora aqui, atrás
+com login próprio, separado do portal. A análise e a apuração moram aqui, atrás
 do login de sempre. As duas falam com as mesmas tabelas
 (`supabase/protegidos.sql`).
 
+### A análise vem antes da fila
+
+Todo bilhete que chega pelo formulário nasce **pendente** e cai na caixa
+**Solicitações**. Aprovar só o move para **A pagar** — nenhum dinheiro sai ali —
+e recusar exige motivo, porque o tipster lê esse texto na lista dele.
+
+Aprovar e recusar só gravam se o bilhete ainda estiver na situação que a tela
+mostrou (o filtro de status vai no próprio `PATCH`). Duas pessoas com a mesma
+solicitação aberta não se atropelam: a segunda recebe o aviso, em vez de desfazer
+calada a decisão da primeira.
+
 ### O que é status e o que é data
 
-Só duas coisas são status no banco: **pago** e **recusado** — as que são decisão
-de alguém. "Aguardando confronto" e "liberado para pagar" saem da comparação
-entre a data do último jogo e hoje.
+Só três coisas são status no banco: **pendente**, **pago** e **recusado** — as
+que são decisão de alguém (pendente é a decisão que ainda não foi tomada, e passa
+na frente da data). "Aguardando confronto" e "liberado para pagar" saem da
+comparação entre a data do último jogo e hoje.
 
 Não é economia de coluna. Status que alguém precisa mover é status que um dia
 fica errado: basta o jogo acabar num domingo para a fila mentir até segunda. Da
@@ -557,25 +569,30 @@ não fica no código de nenhuma das duas pontas:
   Quem escreve nessas tabelas são dois programas diferentes, e chave calculada
   em dois lugares é chave que um dia diverge e passa a errar em silêncio.
 
-### O formulário não tem a chave do banco
+### O tipster não é usuário do Supabase
 
-A chave `anon` vai compilada em qualquer JavaScript que a use, e o RLS do portal
-resolve isso exigindo o token de quem está logado. No formulário não há ninguém
-logado: a escrita passa por uma função serverless com a *service role*, que mora
-só nas variáveis daquele projeto. A alternativa — uma política de `insert` para
-`anon` — seria mais curta e deixaria qualquer um injetando bilhete falso direto
-na fila de pagamento.
+O RLS do portal libera tudo para qualquer usuário logado no Supabase Auth
+(`authenticated`). Um tipster com conta ali leria o BI inteiro — e o cadastro do
+Auth ainda é travado no domínio `@esportiva.bet`. Por isso a conta do tipster é
+uma linha de `protegidos_contas`, lida só pelas funções serverless do formulário
+com a *service role*, que mora só nas variáveis daquele projeto. A tabela liga o
+RLS **sem política nenhuma**: nem o portal logado lê o hash das senhas.
 
-O endereço é aberto: quem tiver o link cadastra. O que sobra de proteção é o
-índice único do link, no banco, e a conferência humana — nada é pago sem alguém
-abrir o cartão, ver o bilhete no site e subir a base. Se um dia isso não bastar,
-o caminho que não mexe no formulário é a *Deployment Protection* da Vercel.
+A alternativa para o formulário escrever sem a chave de serviço — uma política de
+`insert` para `anon` — seria mais curta e deixaria qualquer um injetando bilhete
+falso direto no banco.
 
-### O nome do tipster é digitado, e por isso é normalizado
+O cadastro de conta é livre. O que protege o caixa é a análise de cada bilhete,
+o índice único do link e duas travas na conta: o nome de tipster é único (é por
+ele que esta aba agrupa) e vem da conta, nunca do que a requisição manda.
 
-Não há cadastro de tipsters: quem preenche escreve o nome. Sem nada por cima,
-"Rodrigo" hoje e "rodrigo" amanhã seriam dois tipsters em toda soma — e depois
-de gravados não haveria como saber que eram o mesmo.
+### O nome do tipster é normalizado
+
+Antes do login, quem preenchia escrevia o nome a cada bilhete. Sem nada por
+cima, "Rodrigo" hoje e "rodrigo" amanhã seriam dois tipsters em toda soma — e
+depois de gravados não haveria como saber que eram o mesmo. Com a conta o nome é
+digitado uma vez só, e `protegidos_contas` usa a mesma fórmula da chave abaixo
+para recusar um nome novo que colidiria com outro.
 
 Quem junta é `tipster_chave`, coluna **gerada** no banco: caixa, espaço sobrando
 e acento não separam. Ser gerada é o ponto — quem escreve nessas tabelas são
@@ -593,7 +610,12 @@ M."). Aí não há o que adivinhar sem inventar agrupamento onde não existe.
 ### Antes de usar
 
 Só `supabase/protegidos.sql` no SQL Editor. Ele roda numa base limpa e também
-por cima da primeira versão do arquivo, que tinha a tabela de tipsters.
+por cima de qualquer versão anterior do arquivo.
+
+Na versão com login a ordem de publicação importa: primeiro o SQL, depois este
+portal (a caixa Solicitações), por último o formulário com `SESSAO_SEGREDO`
+configurada. Os bilhetes que já estavam em A pagar continuam lá, contando como
+aprovados.
 
 ---
 

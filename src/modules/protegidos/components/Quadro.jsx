@@ -1,15 +1,15 @@
 import Cartao from './Cartao.jsx'
 
 /**
- * Uma das duas caixas: A Pagar e Paga.
+ * Uma das três caixas: Solicitações, A Pagar e Paga.
  *
  * O cabeçalho carrega a contagem e o total, e o corpo rola sozinho — com a
- * caixa inteira rolando junto com a página, a outra sairia da tela e as duas
+ * caixa inteira rolando junto com a página, as outras sairiam da tela e
  * deixariam de ser comparáveis de relance, que é a razão de estarem lado a lado.
  */
-export default function Quadro({ titulo, contagem, resumo, filtro, vazio, bilhetes, hoje, aoAbrir }) {
+export default function Quadro({ titulo, classe, contagem, resumo, filtro, vazio, bilhetes, hoje, aoAbrir }) {
   return (
-    <section className="pr-quadro">
+    <section className={`pr-quadro${classe ? ` ${classe}` : ''}`}>
       <header className="pr-quadro-topo">
         <h3>
           {titulo}

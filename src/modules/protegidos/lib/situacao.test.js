@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   diaLocal,
+  diasEmAnalise,
   diasEntre,
   diasNaFila,
   formatarDia,
@@ -81,6 +82,13 @@ describe('situação', () => {
     expect(situacao(pago, HOJE)).toBe('pago')
     expect(situacao(bilhete({ status: 'recusado' }), HOJE)).toBe('recusado')
   })
+
+  it('pendente espera a análise, mesmo com o jogo já encerrado', () => {
+    // A data só libera o pagamento depois que alguém aprovou. Sem isto, uma
+    // solicitação que ninguém olhou cairia direto em "liberado para pagar".
+    const b = bilhete({ status: 'pendente', confronto_fim: '2026-09-01' })
+    expect(situacao(b, HOJE)).toBe('pendente')
+  })
 })
 
 describe('espera na fila', () => {
@@ -91,6 +99,21 @@ describe('espera na fila', () => {
   it('quem ainda não pode ser pago não está esperando', () => {
     expect(diasNaFila(bilhete({ confronto_fim: '2026-09-20' }), HOJE)).toBe(0)
     expect(diasNaFila(bilhete({ status: 'pago' }), HOJE)).toBe(0)
+    expect(diasNaFila(bilhete({ status: 'pendente', confronto_fim: '2026-09-01' }), HOJE)).toBe(0)
+  })
+})
+
+describe('espera da análise', () => {
+  it('conta desde o envio, e não desde o jogo', () => {
+    // 22h30 em Brasília já é o dia seguinte em UTC: o dia do envio é o local.
+    const enviado = new Date(2026, 8, 5, 22, 30).toISOString()
+    const b = bilhete({ status: 'pendente', enviado_em: enviado, confronto_fim: '2026-09-20' })
+    expect(diasEmAnalise(b, HOJE)).toBe(3)
+  })
+
+  it('o que já foi analisado não está esperando análise', () => {
+    const enviado = new Date(2026, 8, 1, 10).toISOString()
+    expect(diasEmAnalise(bilhete({ enviado_em: enviado }), HOJE)).toBe(0)
   })
 })
 

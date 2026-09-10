@@ -63,6 +63,7 @@ export function formatarDia(iso) {
 // ── Situação ─────────────────────────────────────────────────────────────────
 
 export const SITUACOES = {
+  pendente: { label: 'Aguardando análise', tom: '' },
   aguardando: { label: 'Aguardando confronto', tom: '' },
   liberado: { label: 'Liberado para pagar', tom: 'alerta' },
   pago: { label: 'Pago', tom: 'ok' },
@@ -72,7 +73,11 @@ export const SITUACOES = {
 /**
  * Em que pé o bilhete está.
  *
- * `pago` e `recusado` são decisão de gente e vêm do banco. As outras duas são
+ * `pendente`, `pago` e `recusado` são decisão de gente e vêm do banco.
+ * `pendente` é a decisão que ainda não foi tomada, e passa na frente da data:
+ * jogo encerrado não libera o pagamento de um bilhete que ninguém aprovou.
+ *
+ * As outras duas são
  * DERIVADAS da data, e é isso que faz a fila se manter sozinha: ninguém precisa
  * arrastar card nenhum quando o jogo acaba, e nenhum bilhete fica parado num
  * status vencido porque a pessoa que movia esqueceu.
@@ -83,6 +88,7 @@ export const SITUACOES = {
  * dia é só esperar mais um dia.
  */
 export function situacao(bilhete, hoje = hojeISO()) {
+  if (bilhete?.status === 'pendente') return 'pendente'
   if (bilhete?.status === 'pago') return 'pago'
   if (bilhete?.status === 'recusado') return 'recusado'
   const fim = bilhete?.confronto_fim ?? ''
@@ -98,6 +104,18 @@ export function situacao(bilhete, hoje = hojeISO()) {
 export function diasNaFila(bilhete, hoje = hojeISO()) {
   if (situacao(bilhete, hoje) !== 'liberado') return 0
   return diasEntre(bilhete.confronto_fim, hoje)
+}
+
+/**
+ * Há quantos dias a solicitação espera alguém aprovar ou recusar.
+ *
+ * Conta desde o envio, e não desde o jogo: a análise não depende de o confronto
+ * ter terminado, e o tipster espera a resposta desde que mandou.
+ */
+export function diasEmAnalise(bilhete, hoje = hojeISO()) {
+  if (situacao(bilhete, hoje) !== 'pendente') return 0
+  const enviado = diaDoTimestamp(bilhete.enviado_em)
+  return enviado ? diasEntre(enviado, hoje) : 0
 }
 
 // ── O que já foi pago ────────────────────────────────────────────────────────

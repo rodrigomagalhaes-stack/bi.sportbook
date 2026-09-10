@@ -58,16 +58,24 @@
   color: var(--pb-t1);
 }
 
-/* ── as duas caixas ──────────────────────────────────────────────────────────
-   Lado a lado porque a leitura é a comparação entre elas: o que falta pagar
-   contra o que já saiu. Empilhadas, uma sai da tela e a comparação se perde —
-   por isso só viram coluna única quando a largura não dá mesmo. */
+/* ── as três caixas ──────────────────────────────────────────────────────────
+   Lado a lado, na ordem do caminho do bilhete: chega em Solicitações, passa
+   para A pagar, termina em Paga. A pagar e Paga ficam juntas porque a leitura
+   delas é a comparação — o que falta pagar contra o que já saiu. Quando não
+   cabem três, Solicitações sobe para uma faixa própria e as outras duas seguem
+   lado a lado; coluna única só quando a largura não dá mesmo. */
 
 .pr-quadros {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   align-items: start;
+}
+
+@media (max-width: 1320px) {
+  .pr-quadros { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .pr-quadro-solicitacoes { grid-column: 1 / -1; }
+  .pr-quadro-solicitacoes .pr-quadro-corpo { max-height: 34vh; }
 }
 
 @media (max-width: 1040px) {
@@ -183,6 +191,8 @@
    não avisa sozinha, e um bilhete liberado no meio de dez aguardando não se
    destaca por mais nada. */
 .pr-cartao-liberado { border-left: 3px solid var(--pb-amarelo); }
+/* A cor da marca: é o que pede uma decisão agora, antes de qualquer pagamento. */
+.pr-cartao-pendente { border-left: 3px solid var(--pb-acc); }
 .pr-cartao-pago { border-left: 3px solid var(--pb-verde); }
 .pr-cartao-recusado { opacity: 0.55; }
 

@@ -3,6 +3,7 @@
 
 import {
   diaDoTimestamp,
+  diasEmAnalise,
   diasEntre,
   diasNaFila,
   hojeISO,
@@ -167,10 +168,17 @@ export function filtrar(bilhetes, filtros = {}, hoje = hojeISO()) {
  * o filtro dela, que também é por data de confronto: ordenar por data de
  * pagamento ali faria a lista embaralhar em relação ao recorte que a produziu.
  *
+ * `analise` — a solicitação enviada há mais tempo no topo. O mesmo motivo da
+ * fila: quem espera resposta há mais tempo é quem corre risco de ser esquecido.
+ *
  * `pagos` — pelo momento em que o pagamento foi marcado.
  */
 export function ordenar(bilhetes, modo = 'fila', hoje = hojeISO()) {
   const lista = [...(bilhetes ?? [])]
+
+  if (modo === 'analise') {
+    return lista.sort((a, b) => String(a.enviado_em ?? '').localeCompare(String(b.enviado_em ?? '')))
+  }
 
   if (modo === 'fila') {
     return lista.sort(
@@ -201,6 +209,7 @@ export function ordenar(bilhetes, modo = 'fila', hoje = hojeISO()) {
 export function resumo(bilhetes, hoje = hojeISO()) {
   const r = {
     total: 0,
+    pendentes: 0,
     aguardando: 0,
     liberados: 0,
     pagos: 0,
@@ -210,6 +219,7 @@ export function resumo(bilhetes, hoje = hojeISO()) {
     usuarios: 0,
     semBase: 0,
     esperaMaxima: 0,
+    analiseMaxima: 0,
     tipsters: 0,
   }
 
@@ -221,6 +231,10 @@ export function resumo(bilhetes, hoje = hojeISO()) {
     r.stake += Number(b.stake ?? 0)
 
     const s = situacao(b, hoje)
+    if (s === 'pendente') {
+      r.pendentes++
+      r.analiseMaxima = Math.max(r.analiseMaxima, diasEmAnalise(b, hoje))
+    }
     if (s === 'aguardando') r.aguardando++
     if (s === 'liberado') {
       r.liberados++

@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Codigos from './components/Codigos.jsx'
 import FiltroData from './components/FiltroData.jsx'
 import IdsRepetidos from './components/IdsRepetidos.jsx'
+import PainelAnalise from './components/PainelAnalise.jsx'
 import PainelPagamento from './components/PainelPagamento.jsx'
 import Quadro from './components/Quadro.jsx'
 import { filtrar, ordenar, periodoPara, resumo } from './lib/filtros.js'
-import { hojeISO } from './lib/situacao.js'
+import { hojeISO, situacao } from './lib/situacao.js'
 import { buscarBilhetes, reabrir } from './lib/dados.js'
 
 const moeda = (n) => Number(n ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -43,6 +44,14 @@ export default function App() {
     carregar()
   }, [carregar])
 
+  // O que chegou pelo formulário e ninguém analisou. Sem filtro de data pelo
+  // mesmo motivo de A pagar: é fila de trabalho, e a mais antiga é a que mais
+  // precisa aparecer.
+  const pendentes = useMemo(
+    () => ordenar(filtrar(bilhetes, { situacoes: ['pendente'] }, hoje), 'analise', hoje),
+    [bilhetes, hoje],
+  )
+
   const aPagar = useMemo(() => {
     const situacoes = verRecusados
       ? ['aguardando', 'liberado', 'recusado']
@@ -62,6 +71,7 @@ export default function App() {
     return ordenar(lista, 'confronto', hoje)
   }, [bilhetes, filtro, hoje])
 
+  const totalAnalise = useMemo(() => resumo(pendentes, hoje), [pendentes, hoje])
   const totalPagar = useMemo(() => resumo(aPagar, hoje), [aPagar, hoje])
   const totalPagas = useMemo(() => resumo(pagas, hoje), [pagas, hoje])
 
@@ -108,6 +118,23 @@ export default function App() {
 
           <div className="pr-quadros">
             <Quadro
+              titulo="Solicitações"
+              classe="pr-quadro-solicitacoes"
+              contagem={pendentes.length}
+              resumo={
+                totalAnalise.analiseMaxima > 0
+                  ? `a mais antiga espera há ${inteiro(totalAnalise.analiseMaxima)}d`
+                  : pendentes.length > 0
+                    ? 'todas enviadas hoje'
+                    : ''
+              }
+              bilhetes={pendentes}
+              hoje={hoje}
+              aoAbrir={setAberto}
+              vazio="Nenhuma solicitação esperando análise. Elas chegam pelo formulário dos tipsters."
+            />
+
+            <Quadro
               titulo="A pagar"
               contagem={aPagar.length}
               resumo={
@@ -118,7 +145,7 @@ export default function App() {
               bilhetes={aPagar}
               hoje={hoje}
               aoAbrir={setAberto}
-              vazio="Nenhum bilhete cadastrado. Eles chegam pelo formulário de cadastro."
+              vazio="Nenhum bilhete aprovado esperando pagamento."
             />
 
             <Quadro
@@ -152,7 +179,19 @@ export default function App() {
         </>
       )}
 
-      {aberto && (
+      {aberto && situacao(aberto, hoje) === 'pendente' && (
+        <PainelAnalise
+          bilhete={aberto}
+          aoFechar={() => setAberto(null)}
+          aoConcluir={async (msg) => {
+            setAberto(null)
+            await carregar()
+            avisar(msg)
+          }}
+        />
+      )}
+
+      {aberto && situacao(aberto, hoje) !== 'pendente' && (
         <PainelPagamento
           bilhete={aberto}
           hoje={hoje}

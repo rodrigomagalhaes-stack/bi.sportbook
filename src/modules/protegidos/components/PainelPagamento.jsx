@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import AreaUpload from '../../../shell/AreaUpload.jsx'
 import Resumo from '../../../shell/Resumo.jsx'
 import ListaJogadores from './ListaJogadores.jsx'
-import BotaoCopiar from './BotaoCopiar.jsx'
+import Ficha from './Ficha.jsx'
 import { lerArquivo, letraColuna, pareceCabecalho } from '../../../lib/planilha.js'
 import { acharColunaUsuario, montarLinhas, valorDaBase } from '../lib/base.js'
 import { formatarDia, situacao, usuariosPagos, valorPago } from '../lib/situacao.js'
@@ -127,27 +127,9 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
         </div>
 
         <div className="pr-modal-corpo">
-          <dl className="pr-ficha">
-            <div>
-              <dt>Stake</dt>
-              <dd>{moeda(bilhete.stake)}</dd>
-            </div>
-            <div>
-              <dt>Confrontos</dt>
-              <dd>{(bilhete.datas_confrontos ?? []).map(formatarDia).join(' · ') || '—'}</dd>
-            </div>
-            <div className="pr-ficha-bilhete">
-              <dt>Bilhete</dt>
-              <dd>
-                <a className="pf-link" href={bilhete.link_bilhete} target="_blank" rel="noreferrer noopener">
-                  abrir no site
-                </a>
-                {/* Só na fila: é antes de pagar que o link precisa sair daqui
-                    para uma conversa, uma planilha, o site da casa. */}
-                {!pago && <BotaoCopiar link={bilhete.link_bilhete} />}
-              </dd>
-            </div>
-          </dl>
+          {/* O copiar só aparece na fila: é antes de pagar que o link precisa
+              sair daqui para uma conversa, uma planilha, o site da casa. */}
+          <Ficha bilhete={bilhete} copiar={!pago} />
 
           {bilhete.observacao && <p className="pf-hint">{bilhete.observacao}</p>}
 
@@ -283,7 +265,9 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
               {recusando && (
                 <div className="pr-recusa">
                   <label className="pf-campo">
-                    <span>Motivo da recusa</span>
+                    <span>
+                      {bilhete.conta_id ? 'Motivo da recusa — o tipster vê este texto' : 'Motivo da recusa'}
+                    </span>
                     <input
                       className="pf-input"
                       value={motivo}

@@ -3,9 +3,12 @@
 -- quem seguiu a dica.
 --
 -- O CICLO
---   1. A equipe cadastra o bilhete no formulário (URL separada, fora do BI).
---   2. Enquanto o último confronto não terminou, não há o que pagar.
---   3. Terminado o jogo, o bilhete aparece na caixa "A pagar".
+--   1. O tipster entra com a conta dele no formulário (URL separada, fora do
+--      BI) e envia o bilhete. Ele nasce `pendente`.
+--   2. A equipe abre a caixa "Solicitações" do BI e aprova ou recusa. A recusa
+--      leva motivo, e o tipster lê esse motivo na lista dele.
+--   3. Aprovado, o bilhete vai para "A pagar" — mas enquanto o último confronto
+--      não terminou, ainda não há o que pagar.
 --   4. Ao abrir o cartão, sobe o CSV da base reembolsada e ele vira "Paga".
 --
 -- POR QUE O VALOR A PAGAR NÃO EXISTE NESTA TABELA
@@ -71,18 +74,98 @@ end;
 $$;
 
 
--- 2. Bilhetes ────────────────────────────────────────────────────────────────
--- Numa base que já tem esta tabela, tudo aqui é pulado e quem alinha as
+-- 2. Contas e bilhetes ───────────────────────────────────────────────────────
+-- Numa base que já tem estas tabelas, tudo aqui é pulado e quem alinha as
 -- diferenças é a seção 3.
+
+-- A conta do tipster no formulário. NÃO é usuário do Supabase Auth, de
+-- propósito: todo usuário do Auth é `authenticated`, e as políticas do BI
+-- (supabase/rls.sql e a seção 8 daqui) liberam tudo para esse papel. Um tipster
+-- com conta no Auth leria o BI inteiro. Esta tabela só é lida pelas funções do
+-- formulário, com a chave de serviço.
+--
+-- O NOME É ÚNICO. O cadastro é livre, e o nome da conta vira `tipster_nome` em
+-- cada bilhete — é por ele que o BI agrupa. Sem a trava, qualquer um criaria a
+-- conta "Rodrigo" e os bilhetes dela cairiam somados com os do Rodrigo de
+-- verdade. A chave é a mesma fórmula de `tipster_chave`, para "João" e "joao"
+-- colidirem aqui exatamente como se juntam lá.
+
+create table if not exists public.protegidos_contas (
+  id          uuid primary key default gen_random_uuid(),
+  nome        text not null check (btrim(nome) <> ''),
+  nome_chave  text generated always as (
+    translate(
+      lower(btrim(regexp_replace(nome, '\s+', ' ', 'g'))),
+      'áàâãäéèêëíìîïóòôõöúùûüçñ',
+      'aaaaaeeeeiiiiooooouuuucn'
+    )
+  ) stored,
+  email       text not null check (position('@' in email) > 1),
+  email_chave text generated always as (lower(btrim(email))) stored,
+  -- `scrypt$sal$hash`, gerado em api/_sessao.js do formulário. Nunca a senha.
+  senha_hash  text not null,
+  criada_em   timestamptz not null default now(),
+
+  -- A trava de tentativas (função logo abaixo). Função serverless não guarda
+  -- memória entre uma chamada e outra, então a contagem mora aqui.
+  tentativas  integer not null default 0,
+  travada_ate timestamptz
+);
+
+create unique index if not exists protegidos_contas_email_uk
+  on public.protegidos_contas (email_chave);
+create unique index if not exists protegidos_contas_nome_uk
+  on public.protegidos_contas (nome_chave);
+
+-- A trava de tentativas, numa instrução só.
+--
+-- A tentativa é contada ANTES de a senha ser conferida, e dentro de um único
+-- UPDATE. As duas coisas juntas são o que impede a trava de ser contornada com
+-- pedidos em paralelo: se o formulário lesse o contador, conferisse a senha e
+-- só então somasse, mil pedidos simultâneos leriam todos "zero tentativas" e
+-- mil senhas seriam testadas antes de a primeira falha ser gravada. No UPDATE,
+-- o Postgres enfileira os pedidos na linha da conta e cada um enxerga o
+-- contador deixado pelo anterior.
+--
+-- Cinco tentativas passam; a sexta sem acerto trava a conta por quinze minutos.
+-- O acerto zera o contador (api/sessao.js). Devolve nulo quando a senha pode
+-- ser conferida, ou o momento em que a trava vence.
+--
+-- Os SETs leem os valores de ANTES da atualização, os dois; o RETURNING lê os
+-- de depois.
+
+create or replace function public.protegidos_reservar_tentativa(conta uuid)
+returns timestamptz
+language sql
+as $$
+  update public.protegidos_contas
+     set travada_ate = case
+                         when travada_ate > now() then travada_ate
+                         when tentativas >= 5     then now() + interval '15 minutes'
+                         else travada_ate
+                       end,
+         tentativas  = case
+                         when travada_ate > now() then tentativas
+                         when tentativas >= 5     then 0
+                         else tentativas + 1
+                       end
+   where id = conta
+  returning case when travada_ate > now() then travada_ate end;
+$$;
+
+-- Só a chave de serviço chama. Um usuário do BI com acesso a esta função
+-- conseguiria travar a conta de qualquer tipster.
+revoke execute on function public.protegidos_reservar_tentativa(uuid) from public, anon, authenticated;
+grant execute on function public.protegidos_reservar_tentativa(uuid) to service_role;
 
 create table if not exists public.protegidos_bilhetes (
   id           uuid primary key default gen_random_uuid(),
 
   -- ── o que vem do formulário ───────────────────────────────────────────────
-  -- O nome do tipster é digitado a cada cadastro, então `tipster_chave` é o
-  -- único agrupamento que existe: sem ela, "Rodrigo", "rodrigo" e "Rodrigo "
-  -- seriam três tipsters em toda soma e todo filtro — e depois de gravados não
-  -- haveria como saber que eram o mesmo.
+  -- O nome do tipster vem copiado da conta — e, nos bilhetes de antes do login,
+  -- foi digitado a cada cadastro. `tipster_chave` é o agrupamento: sem ela,
+  -- "Rodrigo", "rodrigo" e "Rodrigo " seriam três tipsters em toda soma e todo
+  -- filtro — e depois de gravados não haveria como saber que eram o mesmo.
   --
   -- Ela junta caixa, espaço sobrando e acento. O acento sai por `translate`, e
   -- não pela extensão `unaccent`: `unaccent()` é STABLE, não IMMUTABLE, porque
@@ -111,15 +194,23 @@ create table if not exists public.protegidos_bilhetes (
 
   observacao   text,
   enviado_em   timestamptz not null default now(),
-  enviado_por  text,
+  enviado_por  text,             -- o e-mail da conta que enviou
+  -- Nulo nos bilhetes de antes do login, que não têm dono. Sem cascata: apagar
+  -- uma conta não pode levar junto bilhete que já virou pagamento.
+  conta_id     uuid references public.protegidos_contas(id),
 
   -- ── o que a operação decide ───────────────────────────────────────────────
-  -- Só existem aqui os estados que são decisão de gente. "Aguardando confronto"
-  -- e "liberado para pagar" NÃO são status: eles saem da comparação entre
-  -- `confronto_fim` e a data de hoje, e por isso nunca ficam desatualizados nem
-  -- dependem de alguém lembrar de arrastar um card.
-  status        text not null default 'a_pagar'
-                check (status in ('a_pagar', 'pago', 'recusado')),
+  -- Só existem aqui os estados que são decisão de gente — `pendente` é o
+  -- "ninguém decidiu ainda". "Aguardando confronto" e "liberado para pagar" NÃO
+  -- são status: eles saem da comparação entre `confronto_fim` e a data de hoje,
+  -- e por isso nunca ficam desatualizados nem dependem de alguém lembrar de
+  -- arrastar um card.
+  status        text not null default 'pendente'
+                check (status in ('pendente', 'a_pagar', 'pago', 'recusado')),
+  aprovado_em   timestamptz,
+  aprovado_por  text,
+  recusado_em   timestamptz,
+  recusado_por  text,
   pago_em       timestamptz,
   pago_por      text,
   motivo_recusa text,
@@ -163,6 +254,32 @@ alter table public.protegidos_bilhetes
 alter table public.protegidos_bilhetes drop column if exists tipster_id;
 drop table if exists public.protegidos_tipsters;
 
+-- A versão com login e análise. Aqui `add column if not exists` serve, ao
+-- contrário de `tipster_chave`: nenhuma destas é coluna gerada, então não há
+-- fórmula velha que possa ficar em pé.
+--
+-- Os bilhetes que já estão em `a_pagar` continuam lá e contam como aprovados:
+-- entraram quando não havia análise. Muda só o padrão, para o que chega de
+-- agora em diante.
+--
+-- A regra do status é trocada pelo nome. Ela nasceu na linha da coluna, e o
+-- Postgres batiza essas regras de `<tabela>_<coluna>_check`.
+
+alter table public.protegidos_bilhetes
+  add column if not exists conta_id     uuid references public.protegidos_contas(id),
+  add column if not exists aprovado_em  timestamptz,
+  add column if not exists aprovado_por text,
+  add column if not exists recusado_em  timestamptz,
+  add column if not exists recusado_por text;
+
+alter table public.protegidos_bilhetes
+  drop constraint if exists protegidos_bilhetes_status_check;
+alter table public.protegidos_bilhetes
+  add constraint protegidos_bilhetes_status_check
+  check (status in ('pendente', 'a_pagar', 'pago', 'recusado'));
+alter table public.protegidos_bilhetes
+  alter column status set default 'pendente';
+
 
 -- 4. O gatilho das datas, e os índices ───────────────────────────────────────
 -- `confronto_fim` seria uma coluna gerada se desse: coluna gerada exige função
@@ -201,6 +318,9 @@ create index if not exists protegidos_bilhetes_status_ix
   on public.protegidos_bilhetes (status);
 create index if not exists protegidos_bilhetes_tipster_ix
   on public.protegidos_bilhetes (tipster_chave);
+-- "Minhas solicitações": os bilhetes de uma conta, do mais recente para trás.
+create index if not exists protegidos_bilhetes_conta_ix
+  on public.protegidos_bilhetes (conta_id, enviado_em desc);
 
 
 -- 5. As bases pagas ──────────────────────────────────────────────────────────
@@ -317,6 +437,12 @@ alter table public.protegidos_bilhetes    enable row level security;
 alter table public.protegidos_bases       enable row level security;
 alter table public.protegidos_base_linhas enable row level security;
 
+-- As contas ligam o RLS e NÃO ganham política nenhuma: nem o BI logado as lê.
+-- Quem lê é só a função do formulário, com a chave de serviço, que ignora o
+-- RLS. O BI não precisa delas — o nome do tipster já vem copiado no bilhete — e
+-- assim o hash das senhas não chega a navegador nenhum.
+alter table public.protegidos_contas enable row level security;
+
 drop policy if exists "portal: usuarios autenticados" on public.protegidos_bilhetes;
 create policy "portal: usuarios autenticados" on public.protegidos_bilhetes
   for all to authenticated using (true) with check (true);
@@ -358,9 +484,11 @@ create policy "protegidos: envio autenticado" on storage.objects
 
 
 -- 10. Conferência ────────────────────────────────────────────────────────────
--- Esperado: as 3 tabelas com rls_ligado = true, politicas = 1 e
--- politicas_abertas = 0, e `tipster_chave` presente. Qualquer linha com
--- politicas_abertas > 0 significa que ainda há caminho sem login.
+-- Esperado: as 3 tabelas de bilhete com rls_ligado = true, politicas = 1 e
+-- politicas_abertas = 0; `protegidos_contas` com rls_ligado = true e
+-- politicas = 0. Qualquer linha com politicas_abertas > 0 significa que ainda
+-- há caminho sem login — e qualquer política em `protegidos_contas` põe o hash
+-- das senhas ao alcance do BI.
 
 select
   c.relname as tabela,
@@ -373,14 +501,16 @@ select
 from pg_class c
 join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public'
-  and c.relname in ('protegidos_bilhetes', 'protegidos_bases', 'protegidos_base_linhas')
+  and c.relname in ('protegidos_bilhetes', 'protegidos_bases', 'protegidos_base_linhas',
+                    'protegidos_contas')
 order by c.relname;
 
--- As colunas que a versão nova precisa ter: `tipster_chave` presente e
--- `tipster_id` ausente.
+-- As colunas que a versão nova precisa ter: `tipster_chave`, `conta_id`,
+-- `aprovado_em` e `recusado_em` presentes, e `tipster_id` ausente.
 select column_name, is_generated
 from information_schema.columns
 where table_schema = 'public'
   and table_name = 'protegidos_bilhetes'
-  and column_name in ('tipster_nome', 'tipster_chave', 'tipster_id', 'link_chave')
+  and column_name in ('tipster_nome', 'tipster_chave', 'tipster_id', 'link_chave',
+                      'conta_id', 'aprovado_em', 'recusado_em')
 order by column_name;

@@ -93,6 +93,12 @@ describe('filtro', () => {
     expect(fila.map((b) => b.id)).toEqual(['1', '3'])
   })
 
+  it('pendente não entra na fila de pagamento', () => {
+    const pendente = { ...BILHETES[0], id: 'p', status: 'pendente' }
+    const fila = filtrar([...BILHETES, pendente], { situacoes: ['aguardando', 'liberado'] }, HOJE)
+    expect(fila.map((b) => b.id)).toEqual(['1', '3'])
+  })
+
   it('o recorte de data muda de resposta conforme o campo escolhido', () => {
     // O mesmo setembro: por confronto o bilhete 2 fica de fora (jogou em
     // agosto), por pagamento ele entra (o dinheiro saiu em setembro). É
@@ -147,6 +153,12 @@ describe('ordem', () => {
     const antigo = { ...BILHETES[1], id: '5', confronto_fim: '2026-07-10' }
     expect(ordenar([antigo, BILHETES[1]], 'confronto').map((b) => b.id)).toEqual(['2', '5'])
   })
+
+  it('nas solicitações, a enviada há mais tempo vem primeiro', () => {
+    const nova = { ...BILHETES[0], id: 'n', status: 'pendente', enviado_em: '2026-09-08T10:00:00+00:00' }
+    const velha = { ...BILHETES[0], id: 'v', status: 'pendente', enviado_em: '2026-09-02T10:00:00+00:00' }
+    expect(ordenar([nova, velha], 'analise').map((b) => b.id)).toEqual(['v', 'n'])
+  })
 })
 
 describe('totais', () => {
@@ -169,6 +181,16 @@ describe('totais', () => {
 
   it('a espera máxima é a idade do bilhete mais antigo da fila', () => {
     expect(resumo(BILHETES, HOJE).esperaMaxima).toBe(2)
+  })
+
+  it('conta as solicitações e a idade da mais antiga', () => {
+    const p1 = { ...BILHETES[0], id: 'p1', status: 'pendente', enviado_em: new Date(2026, 8, 3, 12).toISOString() }
+    const p2 = { ...BILHETES[0], id: 'p2', status: 'pendente', enviado_em: new Date(2026, 8, 7, 12).toISOString() }
+    const r = resumo([...BILHETES, p1, p2], HOJE)
+    expect(r.pendentes).toBe(2)
+    expect(r.analiseMaxima).toBe(5)
+    // Pendente não conta como liberado, ainda que o jogo já tenha acabado.
+    expect(r.liberados).toBe(1)
   })
 
   it('quebra por tipster, do que mais recebeu para o que menos', () => {

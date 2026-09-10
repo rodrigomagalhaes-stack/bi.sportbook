@@ -75,11 +75,51 @@ export const reabrir = (id) =>
     body: { status: 'a_pagar', pago_em: null, pago_por: null },
   })
 
-export const recusar = (id, motivo) =>
-  rest(`protegidos_bilhetes?id=eq.${encodeURIComponent(id)}`, {
+/**
+ * Aprova uma solicitação: ela sai de Solicitações e entra em A pagar.
+ *
+ * O filtro de status faz a mudança valer só para o que ainda está pendente.
+ * Duas pessoas com a mesma solicitação aberta não se atropelam: a segunda não
+ * desfaz a recusa que a primeira acabou de gravar. Sem o filtro o PATCH não
+ * daria erro nenhum, e a decisão da primeira sumiria calada.
+ */
+export async function aprovar(id) {
+  const linhas = await rest(`protegidos_bilhetes?id=eq.${encodeURIComponent(id)}&status=eq.pendente`, {
     method: 'PATCH',
-    body: { status: 'recusado', motivo_recusa: motivo?.trim() || null },
+    headers: { Prefer: 'return=representation' },
+    body: { status: 'a_pagar', aprovado_em: new Date().toISOString(), aprovado_por: await usuarioAtual() },
   })
+  if (!linhas?.length) {
+    throw new Error('Esta solicitação já foi analisada por outra pessoa. Feche e atualize a tela.')
+  }
+}
+
+/**
+ * Recusa um bilhete — pendente, na análise, ou já aprovado, na fila.
+ *
+ * Nos bilhetes que vieram de uma conta, o motivo NÃO é anotação interna: o
+ * tipster o lê em Minhas solicitações. O filtro de status é o mesmo cuidado de
+ * `aprovar`: um painel aberto há tempo não recusa um bilhete que outra pessoa
+ * acabou de pagar.
+ */
+export async function recusar(id, motivo) {
+  const linhas = await rest(
+    `protegidos_bilhetes?id=eq.${encodeURIComponent(id)}&status=in.(pendente,a_pagar)`,
+    {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: {
+        status: 'recusado',
+        motivo_recusa: motivo?.trim() || null,
+        recusado_em: new Date().toISOString(),
+        recusado_por: await usuarioAtual(),
+      },
+    },
+  )
+  if (!linhas?.length) {
+    throw new Error('Este bilhete mudou de situação enquanto estava aberto. Feche e atualize a tela.')
+  }
+}
 
 export const apagarBase = (id) =>
   rest(`protegidos_bases?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' })
