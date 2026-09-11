@@ -436,6 +436,46 @@ os rótulos que ficaram de fora — cada um é um candidato a virar regra nova.
 
 ---
 
+## Controle de Boost: grupos de Tipster
+
+A vertente **Tipster** continua uma só. Dentro dela, cada linha marcada TIP
+ganha uma caixa para escolher o **grupo**, ou seja, quem mandou a dica (Mansão
+Green, Tropa...). A última opção da caixa cadastra um grupo novo. A aba
+**Tipsters** mostra o resultado de cada grupo, com o mesmo recorte de mês e
+período do Histórico: painéis, ranking, net mês a mês, as linhas de cada grupo e
+a lista de grupos cadastrados.
+
+### O grupo mora na linha, e a vertente não muda
+
+O grupo é gravado como `grupo` dentro do jsonb de `boost_days`, ao lado de
+`cat: 'tipster'`. Nada que já lia `cat` percebe a diferença: o painel Tipster do
+Histórico, a Análise e o Recomendador somam igual. A aba Tipsters parte das
+mesmas linhas (`catOf === 'tipster'`), então **a soma dos grupos sempre fecha com
+o Tipster**. Linha Tipster sem grupo aparece como *Sem grupo* em vez de sumir.
+Os dias salvos antes desta mudança caem todos ali até alguém abrir o dia,
+escolher os grupos e salvar de novo.
+
+Linha marcada Tipster que entrou na campanha de aumento conta como Aumento, e o
+grupo dela fica guardado, mas fora da conta. É a mesma regra da vertente.
+
+### A lista de grupos
+
+Fica em `boost_tipster_grupos` (`supabase/boost_tipster_grupos.sql`), com
+chave normalizada como a dos Protegidos: caixa, espaço e acento não separam
+"Tropa" de "tropa ". Sem a tabela a tela não quebra, e a lista cai no
+localStorage do navegador com os dois grupos de partida. Um grupo já usado em
+algum dia salvo aparece para todos de qualquer jeito, porque a lista também é
+lida das linhas.
+
+Só sai da lista o grupo que nenhuma linha usa. Isso serve para desfazer nome
+digitado errado. Um grupo com histórico voltaria sozinho pelos dias salvos.
+
+### Antes de usar
+
+Rodar `supabase/boost_tipster_grupos.sql` no SQL Editor.
+
+---
+
 ## Bingos Protegidos
 
 O tipster publica um bilhete; quem seguiu a dica e perdeu recebe a stake de
