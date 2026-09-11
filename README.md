@@ -622,17 +622,18 @@ A alternativa para o formulário escrever sem a chave de serviço — uma polít
 `insert` para `anon` — seria mais curta e deixaria qualquer um injetando bilhete
 falso direto no banco.
 
-O cadastro de conta é livre. O que protege o caixa é a análise de cada bilhete,
-o índice único do link e duas travas na conta: o nome de tipster é único (é por
-ele que esta aba agrupa) e vem da conta, nunca do que a requisição manda.
+O cadastro de conta é livre, e o nome do tipster é digitado em cada solicitação —
+uma conta pode mandar bilhetes de mais de um tipster. O que protege o caixa é a
+análise de cada bilhete e o índice único do link. De qual conta veio cada bilhete
+fica gravado (`conta_id`, `enviado_por`) e aparece no painel da análise, seja
+qual for o nome digitado.
 
 ### O nome do tipster é normalizado
 
-Antes do login, quem preenchia escrevia o nome a cada bilhete. Sem nada por
-cima, "Rodrigo" hoje e "rodrigo" amanhã seriam dois tipsters em toda soma — e
-depois de gravados não haveria como saber que eram o mesmo. Com a conta o nome é
-digitado uma vez só, e `protegidos_contas` usa a mesma fórmula da chave abaixo
-para recusar um nome novo que colidiria com outro.
+Quem preenche escreve o nome do tipster a cada bilhete. Sem nada por cima,
+"Rodrigo" hoje e "rodrigo" amanhã seriam dois tipsters em toda soma — e depois
+de gravados não haveria como saber que eram o mesmo. O formulário sugere os
+nomes que a conta já usou; o que escapa disso, a chave abaixo junta.
 
 Quem junta é `tipster_chave`, coluna **gerada** no banco: caixa, espaço sobrando
 e acento não separam. Ser gerada é o ponto — quem escreve nessas tabelas são

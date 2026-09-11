@@ -84,22 +84,12 @@ $$;
 -- com conta no Auth leria o BI inteiro. Esta tabela só é lida pelas funções do
 -- formulário, com a chave de serviço.
 --
--- O NOME É ÚNICO. O cadastro é livre, e o nome da conta vira `tipster_nome` em
--- cada bilhete — é por ele que o BI agrupa. Sem a trava, qualquer um criaria a
--- conta "Rodrigo" e os bilhetes dela cairiam somados com os do Rodrigo de
--- verdade. A chave é a mesma fórmula de `tipster_chave`, para "João" e "joao"
--- colidirem aqui exatamente como se juntam lá.
+-- O `nome` é de quem entra, não do tipster: uma conta pode mandar bilhetes de
+-- mais de um tipster, e o nome dele é digitado em cada solicitação.
 
 create table if not exists public.protegidos_contas (
   id          uuid primary key default gen_random_uuid(),
   nome        text not null check (btrim(nome) <> ''),
-  nome_chave  text generated always as (
-    translate(
-      lower(btrim(regexp_replace(nome, '\s+', ' ', 'g'))),
-      'áàâãäéèêëíìîïóòôõöúùûüçñ',
-      'aaaaaeeeeiiiiooooouuuucn'
-    )
-  ) stored,
   email       text not null check (position('@' in email) > 1),
   email_chave text generated always as (lower(btrim(email))) stored,
   -- `scrypt$sal$hash`, gerado em api/_sessao.js do formulário. Nunca a senha.
@@ -114,8 +104,11 @@ create table if not exists public.protegidos_contas (
 
 create unique index if not exists protegidos_contas_email_uk
   on public.protegidos_contas (email_chave);
-create unique index if not exists protegidos_contas_nome_uk
-  on public.protegidos_contas (nome_chave);
+-- A versão anterior travava o nome da conta como único, quando ele ainda virava
+-- o nome do tipster em cada bilhete. Deixou de virar, e a trava sai: duas
+-- pessoas chamadas João podem ter conta. A coluna da chave sai junto.
+drop index if exists public.protegidos_contas_nome_uk;
+alter table public.protegidos_contas drop column if exists nome_chave;
 
 -- A trava de tentativas, numa instrução só.
 --
@@ -162,8 +155,8 @@ create table if not exists public.protegidos_bilhetes (
   id           uuid primary key default gen_random_uuid(),
 
   -- ── o que vem do formulário ───────────────────────────────────────────────
-  -- O nome do tipster vem copiado da conta — e, nos bilhetes de antes do login,
-  -- foi digitado a cada cadastro. `tipster_chave` é o agrupamento: sem ela,
+  -- O nome do tipster é digitado a cada solicitação — quem entra com uma conta
+  -- pode mandar bilhetes de mais de um. `tipster_chave` é o agrupamento: sem ela,
   -- "Rodrigo", "rodrigo" e "Rodrigo " seriam três tipsters em toda soma e todo
   -- filtro — e depois de gravados não haveria como saber que eram o mesmo.
   --
