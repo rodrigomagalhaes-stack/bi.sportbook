@@ -122,6 +122,21 @@ body { background:var(--bg); color:var(--text); font-family:var(--pb-font); font
 .seg-btn.wel.on { background:rgba(245,158,11,.2); color:var(--yellow); }
 .seg-btn.aum.on { background:rgba(96,165,250,.2); color:var(--blue); }
 
+/* GRUPO DO TIPSTER — subdivisão dentro da vertente, só em linha TIP */
+.grp-sel { display:block; width:100%; margin-top:5px; background:var(--bg3); border:1px solid rgba(255,85,0,.45); color:var(--orange); border-radius:4px; padding:3px 6px; font-size:11px; font-weight:700; font-family:inherit; cursor:pointer; }
+.grp-sel:focus { outline:none; border-color:var(--orange); }
+/* sem grupo escolhido: tracejado, para a linha pendente saltar aos olhos */
+.grp-sel.vazio { border-style:dashed; color:var(--t2); }
+.tag-grupo { background:rgba(255,85,0,.12); color:var(--orange); text-transform:none; letter-spacing:0; }
+.cp-grupos { margin-top:12px; padding-top:10px; border-top:1px dashed var(--border); display:grid; gap:5px; }
+.cp-grp { display:flex; justify-content:space-between; gap:10px; font-size:11px; color:var(--t2); }
+.cp-grp span:last-child { font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.cp-grp-sem { font-style:italic; color:var(--t3); }
+.grp-lbl { display:block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--t2); margin-bottom:6px; }
+.grp-input { width:100%; background:var(--bg3); border:1px solid var(--bord2); color:var(--text); padding:8px 10px; border-radius:var(--r); font-size:13px; font-family:inherit; }
+.grp-input:focus { outline:none; border-color:var(--orange); }
+.grp-hint { margin-top:8px; font-size:11px; color:var(--t3); }
+
 /* faixa lateral colorida por vertente na linha da tabela */
 #boostTable tbody tr.row-tip td:first-child { box-shadow:inset 3px 0 0 var(--orange); }
 #boostTable tbody tr.row-wel td:first-child { box-shadow:inset 3px 0 0 var(--yellow); }
@@ -303,6 +318,27 @@ body { background:var(--bg); color:var(--text); font-family:var(--pb-font); font
 .pill-row.dim .month-pill { opacity:.4; }
 .date-range-input { color-scheme:dark; width:145px; }
 .df-sep { font-size:11px; font-weight:700; color:var(--t3); }
+
+/* ═══ TIPSTERS ══════════════════════════════════════════════════════ */
+/* Cada grupo é uma fatia da mesma vertente: nenhum ganha cor própria. Laranja
+   fica com o que é Tipster como um todo; verde e vermelho, com o resultado. */
+.sum-panel.panel-grupo     { border-color:rgba(255,85,0,.2); }
+.sum-panel.panel-sem-grupo { border-style:dashed; }
+.panel-grupo .ph-title     { color:var(--text); }
+.panel-sem-grupo .ph-title { color:var(--t2); font-style:italic; }
+.tip-sec { margin:0 0 28px; }
+.tip-sec-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.tip-sec-head h3 { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.7px; color:var(--t2); }
+.tip-sub { font-size:11px; color:var(--t3); }
+.inner-table tr.tip-row { cursor:pointer; }
+.inner-table tr.tip-row.sel td { background:rgba(255,85,0,.07); }
+.inner-table tr.tip-row.sel td:first-child { box-shadow:inset 3px 0 0 var(--orange); }
+.inner-table tfoot td { background:var(--bg3); font-weight:700; border-top:2px solid var(--bord2); padding:8px 12px; font-size:12px; }
+.grp-list { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.grp-item { display:inline-flex; align-items:center; gap:8px; padding:4px 8px 4px 12px; border-radius:20px; border:1px solid var(--bord2); background:var(--bg2); font-size:12px; font-weight:700; }
+.grp-uso { font-size:10px; font-weight:600; color:var(--t3); }
+.grp-del { border:none; background:transparent; color:var(--t3); cursor:pointer; font-size:12px; line-height:1; padding:2px 4px; border-radius:50%; }
+.grp-del:hover { color:var(--red); }
 
 /* ═══ ANÁLISE MENSAL ════════════════════════════════════════════════ */
 /* SISTEMA DE COR DA ABA — quatro papéis, sem exceção e sem cor decorativa:
@@ -577,6 +613,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--pb-font); font
   <div class="nav-tabs">
     <div class="nav-tab"        id="tab-import"  onclick="switchTab('import')">Importar</div>
     <div class="nav-tab active" id="tab-history" onclick="switchTab('history')">Histórico</div>
+    <div class="nav-tab"        id="tab-tipsters" onclick="switchTab('tipsters')">Tipsters</div>
     <div class="nav-tab"        id="tab-analise" onclick="switchTab('analise')">Análise</div>
   </div>
 </div>
@@ -694,6 +731,32 @@ body { background:var(--bg); color:var(--text); font-family:var(--pb-font); font
   <div id="histContent"></div>
 </div>
 
+<!-- TIPSTERS — a vertente Tipster aberta por grupo. Mesmo recorte de mês e
+     período do Histórico: trocar numa aba vale na outra. -->
+<div class="page" id="page-tipsters">
+  <div class="hist-top">
+    <h2>Tipsters por grupo</h2>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" type="button" onclick="novoGrupo()">＋ Novo grupo</button>
+      <button class="btn btn-ghost" type="button" id="btnExportTip" onclick="exportTipsters()">⬇ Exportar Excel</button>
+    </div>
+  </div>
+  <div class="pill-row" id="tipMonthPills"></div>
+  <div class="pill-row">
+    <span class="pill-lbl">Período</span>
+    <input type="date" class="date-input date-range-input" id="tipFltFrom"
+           onchange="applyDateFilter('tipFltFrom','tipFltTo')" aria-label="Data inicial">
+    <span class="df-sep">até</span>
+    <input type="date" class="date-input date-range-input" id="tipFltTo"
+           onchange="applyDateFilter('tipFltFrom','tipFltTo')" aria-label="Data final">
+    <button class="btn btn-ghost btn-sm btn-limpar-periodo"
+            onclick="clearDateFilter()" style="display:none">✕ Limpar período</button>
+  </div>
+  <div class="hist-meta"      id="tipMeta"></div>
+  <div class="summary-panels" id="tipCards"></div>
+  <div id="tipContent"></div>
+</div>
+
 <!-- ANÁLISE MENSAL -->
 <div class="page" id="page-analise">
   <div class="hist-top">
@@ -750,6 +813,24 @@ body { background:var(--bg); color:var(--text); font-family:var(--pb-font); font
     <div class="modal-actions">
       <button class="btn btn-ghost" type="button" id="confirmModalCancel">Cancelar</button>
       <button class="btn btn-orange" type="button" id="confirmModalOk">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CADASTRO DE GRUPO DE TIPSTER -->
+<div class="modal-backdrop" id="grupoModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="grupoModalTitle">
+    <div class="modal-header">
+      <div class="modal-title" id="grupoModalTitle">Novo grupo de tipster</div>
+    </div>
+    <div class="modal-body">
+      <label class="grp-lbl" for="grupoModalInput">Nome do grupo</label>
+      <input type="text" class="grp-input" id="grupoModalInput" maxlength="40" autocomplete="off" placeholder="Ex.: Mansão Green">
+      <p class="grp-hint" id="grupoModalHint"></p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" id="grupoModalCancel">Cancelar</button>
+      <button class="btn btn-orange" type="button" id="grupoModalOk">Cadastrar</button>
     </div>
   </div>
 </div>
@@ -812,6 +893,54 @@ const catOf = b => (isAumento(b) ? 'aumento' : catManual(b));
 // Sportsbook + Tipster — sem Welcome e sem as linhas da campanha de aumento.
 const spbTip = arr => arr.filter(b => BASE_CATS.includes(catOf(b)));
 
+// ── GRUPOS DE TIPSTER ─────────────────────────────────────────────────────────
+// Subdivisão DENTRO da vertente Tipster: a linha continua `cat:'tipster'` e
+// ganha `grupo`, o nome de quem mandou a dica. A vertente não muda — os grupos
+// somados dão o Tipster, e tudo que já lia `cat` (Histórico, Análise, o
+// Recomendador) segue lendo igual.
+// O grupo só conta enquanto a linha É Tipster: marcada TIP mas dentro da
+// campanha de aumento, ela vale como Aumento e o grupo fica guardado, fora da
+// conta — a mesma regra do catOf.
+const GRUPOS_PADRAO = ['Mansão Green', 'Tropa'];
+const SK_GRUPOS     = 'esportiva_boost_grupos_v1';
+const NOVO_GRUPO    = '__novo__';   // valor da opção "cadastrar" na caixa da linha
+let gruposCadastro  = [];           // a lista vinda do banco (ou do localStorage)
+let gruposNoBanco   = false;        // sem a tabela, o cadastro fica só neste navegador
+
+// Mesma normalização do tipster_chave dos Protegidos e da coluna `chave` de
+// boost_tipster_grupos: caixa, espaço sobrando e acento não separam grupos.
+const limparNomeGrupo = nome => (nome||'').toString().replace(/\s+/g,' ').trim();
+const chaveGrupo = nome => limparNomeGrupo(nome).normalize('NFD')
+  .replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const grupoOf = b => (catOf(b) === 'tipster' && limparNomeGrupo(b.grupo)) || '';
+
+// A lista da caixa de escolha: o cadastro mais todo grupo que já esteja gravado
+// numa linha. Sem a segunda parte, abrir para editar um dia cujo grupo saiu do
+// cadastro mostraria a linha como se não tivesse grupo.
+function listaGrupos() {
+  const vistos = new Map();
+  const add = nome => { const n = limparNomeGrupo(nome), k = chaveGrupo(n); if (k && !vistos.has(k)) vistos.set(k, n); };
+  gruposCadastro.forEach(add);
+  (cachedDays||[]).forEach(d => (d.boosts||[]).forEach(b => { if (catManual(b)==='tipster') add(b.grupo); }));
+  parsedBoosts.forEach(b => { if (catManual(b)==='tipster') add(b.grupo); });
+  return [...vistos.values()].sort((a,b) => a.localeCompare(b,'pt-BR'));
+}
+
+// Linhas Tipster (já filtradas por catOf) separadas por grupo, maior stake
+// primeiro e "Sem grupo" por último. O nome exibido é o do cadastro.
+function porGrupo(linhas) {
+  const nomes = new Map(listaGrupos().map(g => [chaveGrupo(g), g]));
+  const m = new Map();
+  linhas.forEach(b => {
+    const k = chaveGrupo(b.grupo);
+    if (!m.has(k)) m.set(k, { chave:k, semGrupo:!k, linhas:[],
+                              nome: k ? (nomes.get(k) || limparNomeGrupo(b.grupo)) : 'Sem grupo' });
+    m.get(k).linhas.push(b);
+  });
+  return [...m.values()].map(g => ({ ...g, a:aggCat(g.linhas) }))
+    .sort((x,y) => (x.semGrupo - y.semGrupo) || (y.a.stake - x.a.stake));
+}
+
 // Credenciais públicas do projeto no Supabase.
 //
 // Esta página roda num iframe do portal, na MESMA origem — por isso o cliente
@@ -829,11 +958,12 @@ const supabaseClient = SUPABASE_URL.includes('SEU-PROJETO') || SUPABASE_ANON_KEY
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
 function switchTab(t) {
-  ['import','history','analise'].forEach(id => {
+  ['import','history','tipsters','analise'].forEach(id => {
     document.getElementById('page-'+id).classList.toggle('active', id===t);
     document.getElementById('tab-'+id).classList.toggle('active', id===t);
   });
   if (t==='history') renderHistory();
+  if (t==='tipsters') renderTipsters();
   if (t==='analise') renderAnalise();
 }
 
@@ -1027,6 +1157,9 @@ async function herdarClassificacao() {
     // escolhida, que continua valendo mesmo se a linha entrar na campanha agora.
     b.cat    = catManual(a);
     b.aumOff = !!a.aumOff;
+    // O grupo do tipster também só existe no dia salvo, nunca no arquivo.
+    if (b.cat === 'tipster' && limparNomeGrupo(a.grupo)) b.grupo = limparNomeGrupo(a.grupo);
+    else delete b.grupo;
     if (b.cat !== 'sportsbook' || b.aumOff) herdadas++;
   });
   if (!herdadas) return;
@@ -1139,6 +1272,7 @@ function semAumBlock(arr) {
   const a   = aggCat(arr);
   const spb = aggCat(arr.filter(b=>catOf(b)==='sportsbook'));
   const tip = aggCat(arr.filter(b=>catOf(b)==='tipster'));
+  const grupos = porGrupo(arr.filter(b=>catOf(b)==='tipster'));
   const nc  = a.net>=0?'green':'red';
   const roi = a.stake ? a.net/a.stake : 0;
   const perna = (icone, cls, nome, x) =>
@@ -1154,7 +1288,10 @@ function semAumBlock(arr) {
       <div class="camp-stat"><div class="cs-lbl">Net</div><div class="cs-val ${nc}">${signed(a.net)}</div>
         <div class="cs-sub">ROI ${(roi>=0?'+':'')+(roi*100).toFixed(1)}%</div></div>
     </div>
-    <div class="strip-foot">${perna('⚡','c-spb','Sportsbook',spb)}${perna('🎯','c-tip','Tipster',tip)}</div>`;
+    <div class="strip-foot">${perna('⚡','c-spb','Sportsbook',spb)}${perna('🎯','c-tip','Tipster',tip)}</div>
+    ${grupos.length ? `<div class="strip-foot"><span class="c-tip">🎯 Tipster por grupo:</span>${grupos.map(g =>
+      `<span><span class="${g.semGrupo?'cp-grp-sem':'c-tip'}">${esc(g.nome)}</span> · ${g.a.boosts.toLocaleString('pt-BR')} boosts `+
+      `· net <strong class="${g.a.net>=0?'green':'red'}">${signed(g.a.net)}</strong></span>`).join('')}</div>` : ''}`;
 }
 
 // ── SORT ──────────────────────────────────────────────────────────────────────
@@ -1188,6 +1325,7 @@ function renderTable() {
 
   const tbody = document.getElementById('boostBody');
   const tfoot = document.getElementById('boostFoot');
+  const grupos = listaGrupos();   // uma vez por render, não uma por linha
 
   tbody.innerHTML = visible.map((b,i) => {
     const idx = parsedBoosts.indexOf(b);
@@ -1211,7 +1349,7 @@ function renderTable() {
       <td class="num num-val ${nc}">${(b.net>=0?'+':'')+'R$'+fmt(b.net)}</td>
       <td class="num">${roiTag}</td>
       <td class="num num-val">${b.boostCount ? `<span class="aum-n ${b.aumOff?'off':''}">${b.boostCount.toLocaleString('pt-BR')}</span>` : '<span style="color:var(--t3)">—</span>'}</td>
-      <td class="cat-toggle">${catSeg(idx, cat, b)}</td>
+      <td class="cat-toggle">${catSeg(idx, cat, b)}${cat==='tipster' ? grupoSel(idx, b, grupos) : ''}</td>
     </tr>`;
   }).join('');
 
@@ -1272,13 +1410,39 @@ function setCat(idx, cat) {
   } else {
     if (!CATS[cat].manual) return;
     b.cat = cat;
+    if (cat !== 'tipster') delete b.grupo;       // grupo só existe dentro da vertente Tipster
     if (hasBoost(b)) b.aumOff = true;            // escolher SPB/TIP desmarca o aumento
   }
   renderTable(); updateSummary(); renderVertenteStrips();
 }
+// Caixa de grupo da linha Tipster. A última opção cadastra um grupo novo e já o
+// deixa escolhido nesta linha.
+function grupoSel(idx, b, grupos) {
+  const k = chaveGrupo(b.grupo);
+  return `<select class="grp-sel ${k?'':'vazio'}" title="Grupo do tipster" aria-label="Grupo do tipster" onchange="setGrupo(${idx}, this.value)">
+    <option value=""${k?'':' selected'}>Escolha o grupo…</option>
+    ${grupos.map(g => `<option value="${escAttr(g)}"${chaveGrupo(g)===k?' selected':''}>${esc(g)}</option>`).join('')}
+    <option value="${NOVO_GRUPO}">＋ Cadastrar novo grupo…</option>
+  </select>`;
+}
+async function setGrupo(idx, valor) {
+  const b = parsedBoosts[idx];
+  if (!b) return;
+  if (valor === NOVO_GRUPO) {
+    valor = await pedirNomeGrupo();
+    if (valor === null) { renderTable(); return; }   // cancelou: a caixa volta ao que era
+  }
+  if (limparNomeGrupo(valor)) b.grupo = limparNomeGrupo(valor);
+  else delete b.grupo;
+  renderTable(); updateSummary(); renderVertenteStrips();
+}
 function markAll(cat) {
   if (!CATS[cat] || !CATS[cat].manual) return;
-  parsedBoosts.forEach(b => { if (!isAumento(b)) b.cat = cat; });
+  parsedBoosts.forEach(b => {
+    if (isAumento(b)) return;
+    b.cat = cat;
+    if (cat !== 'tipster') delete b.grupo;
+  });
   renderTable(); updateSummary(); renderVertenteStrips();
 }
 // Devolve todas as linhas desmarcadas para a vertente de aumento.
@@ -1318,9 +1482,11 @@ function renderHiddenNote() {
 function updateSummary() {
   const c = k => parsedBoosts.filter(b=>catOf(b)===k).length;
   const off = parsedBoosts.filter(desmarcada).length;
+  const semGrupo = parsedBoosts.filter(b => catOf(b)==='tipster' && !grupoOf(b)).length;
   document.getElementById('saveSummary').innerHTML =
     `<strong class="c-spb">${c('sportsbook')}</strong> sportsbook &nbsp;·&nbsp; `+
-    `<strong class="c-tip">${c('tipster')}</strong> tipster &nbsp;·&nbsp; `+
+    `<strong class="c-tip">${c('tipster')}</strong> tipster`+
+    (semGrupo ? ` <span class="c-tip">(${semGrupo} sem grupo)</span>` : '')+` &nbsp;·&nbsp; `+
     `<strong class="c-wel">${c('welcome')}</strong> welcome &nbsp;·&nbsp; `+
     `<strong class="c-sem">${spbTip(parsedBoosts).length}</strong> spb+tip &nbsp;·&nbsp; `+
     `<strong class="c-aum">${c('aumento')}</strong> aumento de ganhos`+
@@ -1415,6 +1581,15 @@ async function saveDay() {
   const date = document.getElementById('dayDate').value.trim();
   if (!date) { toast('Informe a data','err'); return; }
   if (!parsedBoosts.length) { toast('Nenhum dado','err'); return; }
+  // Não bloqueia: a linha entra no Tipster do mesmo jeito, só cai em "Sem grupo".
+  const semGrupo = parsedBoosts.filter(b => catOf(b)==='tipster' && !grupoOf(b)).length;
+  if (semGrupo) {
+    const ok = await openConfirmModal('Tipster sem grupo',
+      `${semGrupo} linha${semGrupo!==1?'s':''} marcada${semGrupo!==1?'s':''} como Tipster ainda sem grupo. `+
+      `Elas contam no Tipster, mas aparecem como "Sem grupo" na aba Tipsters. Salvar assim mesmo?`,
+      'Salvar assim', 'Voltar');
+    if (!ok) return;
+  }
   const days = await loadDays();
   const ei = days.findIndex(d=>d.date===date);
   const entry = { date, savedAt:Date.now(), boosts:parsedBoosts.map(b=>({...b})),
@@ -1479,7 +1654,7 @@ function groupByMonth(days) {
 function setMonthFilter(key) {
   monthFilter = key;
   clearDateFilter(false);          // escolher um mês desfaz o recorte por data
-  renderHistory(false);            // usa o cache — trocar de mês não vai ao banco
+  repintarAbaAtiva();              // Histórico ou Tipsters, pelo cache — trocar de mês não vai ao banco
 }
 
 // ── PERÍODO (DATAS ESPECÍFICAS) ───────────────────────────────────────────────
@@ -1514,7 +1689,7 @@ function periodoTag() { return (dateFrom||'inicio')+'_a_'+(dateTo||'fim'); }
 
 // O período é um recorte só, com um par de campos em cada aba. Toda mudança
 // passa por aqui e reescreve os dois pares, para as telas nunca divergirem.
-const PERIODO_CAMPOS = [['fltFrom','fltTo'], ['anFltFrom','anFltTo']];
+const PERIODO_CAMPOS = [['fltFrom','fltTo'], ['tipFltFrom','tipFltTo'], ['anFltFrom','anFltTo']];
 function sincronizarPeriodo() {
   PERIODO_CAMPOS.forEach(([de,ate]) => {
     const eDe = document.getElementById(de), eAte = document.getElementById(ate);
@@ -1526,6 +1701,7 @@ function sincronizarPeriodo() {
 }
 function repintarAbaAtiva() {
   if (document.getElementById('page-history').classList.contains('active')) renderHistory(false);
+  if (document.getElementById('page-tipsters').classList.contains('active')) renderTipsters(false);
   if (document.getElementById('page-analise').classList.contains('active')) renderAnalise(false);
 }
 function applyDateFilter(idDe, idAte) {
@@ -1557,6 +1733,29 @@ function presetMeses(n) {
 }
 
 // ── HISTORY ───────────────────────────────────────────────────────────────────
+// Histórico, Tipsters e as exportações recortam os dias com o mesmo estado —
+// trocar o mês numa aba vale na outra. Período tem precedência; sem ele vale o mês.
+function diasDoRecorte(days) {
+  return periodoAtivo() ? days.filter(d => noPeriodo(d.date))
+       : monthFilter==='all' ? days
+       : days.filter(d => (monthKey(d.date)||'sem-data') === monthFilter);
+}
+function pillsDeMes(months) {
+  const pAtivo = periodoAtivo();
+  return `<span class="pill-lbl">Mês</span>`+
+    `<span class="month-pill ${!pAtivo&&monthFilter==='all'?'active':''}" onclick="setMonthFilter('all')">Todos<em>${months.length} ${months.length===1?'mês':'meses'}</em></span>`+
+    months.map(m=>`<span class="month-pill ${!pAtivo&&monthFilter===m.key?'active':''}" onclick="setMonthFilter('${m.key}')">${m.short}<em>${m.days.length}d</em></span>`).join('');
+}
+function recorteLabel(months) {
+  return periodoAtivo() ? `<strong>${periodoLabel()}</strong>`
+       : monthFilter==='all' ? `<strong>${months.length}</strong> ${months.length===1?'mês':'meses'}`
+       : `<strong>${monthLabel(monthFilter)}</strong>`;
+}
+function rotuloExportar() {
+  return periodoAtivo() ? '⬇ Exportar período'
+       : monthFilter==='all' ? '⬇ Exportar Excel' : '⬇ Exportar '+monthShort(monthFilter);
+}
+
 async function renderHistory(reload = true) {
   if (reload || !cachedDays) cachedDays = await loadDays();
   const days    = cachedDays;
@@ -1577,27 +1776,16 @@ async function renderHistory(reload = true) {
   if (periodoAtivo()) monthFilter = 'all';
   if (monthFilter !== 'all' && !months.some(m=>m.key===monthFilter)) monthFilter = 'all';
 
-  // Recorte em tela: período tem precedência; sem ele vale o mês.
-  const shownDays   = periodoAtivo() ? days.filter(d => noPeriodo(d.date))
-                    : monthFilter==='all' ? days
-                    : days.filter(d => (monthKey(d.date)||'sem-data') === monthFilter);
+  const shownDays   = diasDoRecorte(days);
   const shownMonths = groupByMonth(shownDays);
 
   // Filtro de mês / período — comanda TODOS os blocos abaixo
-  const pAtivo = periodoAtivo();
-  mPills.classList.toggle('dim', pAtivo);
-  mPills.innerHTML = `<span class="pill-lbl">Mês</span>`+
-    `<span class="month-pill ${!pAtivo&&monthFilter==='all'?'active':''}" onclick="setMonthFilter('all')">Todos<em>${months.length} ${months.length===1?'mês':'meses'}</em></span>`+
-    months.map(m=>`<span class="month-pill ${!pAtivo&&monthFilter===m.key?'active':''}" onclick="setMonthFilter('${m.key}')">${m.short}<em>${m.days.length}d</em></span>`).join('');
+  mPills.classList.toggle('dim', periodoAtivo());
+  mPills.innerHTML = pillsDeMes(months);
   sincronizarPeriodo();
 
-  document.getElementById('btnExportHist').textContent =
-    pAtivo ? '⬇ Exportar período'
-    : monthFilter==='all' ? '⬇ Exportar Excel' : '⬇ Exportar '+monthShort(monthFilter);
-
-  const recorte = pAtivo ? `<strong>${periodoLabel()}</strong>`
-                : monthFilter==='all' ? `<strong>${months.length}</strong> ${months.length===1?'mês':'meses'}`
-                : `<strong>${monthLabel(monthFilter)}</strong>`;
+  document.getElementById('btnExportHist').textContent = rotuloExportar();
+  const recorte = recorteLabel(months);
 
   if (!shownDays.length) {
     cards.innerHTML = '';
@@ -1771,9 +1959,13 @@ function catPanel(key, arr) {
         <div style="grid-column:1/-1"><div class="cp-s-lbl">Net</div><div class="cp-s-val ${a.net>=0?'green':'red'} bold">${signed(a.net)}</div></div>
         <div style="grid-column:1/-1"><div class="cp-s-lbl">ROI</div><div class="cp-s-val ${roiV>=0?'green':'red'}">${(roiV>=0?'+':'')+(roiV*100).toFixed(1)}%</div></div>
       </div>`;
+  // O Tipster abre por grupo embaixo dos números da vertente.
+  const grupos = key==='tipster' && arr.length ? `<div class="cp-grupos">${porGrupo(arr).map(g =>
+    `<div class="cp-grp"><span class="${g.semGrupo?'cp-grp-sem':''}">${esc(g.nome)} · ${g.a.boosts}</span>`+
+    `<span class="${g.a.net>=0?'green':'red'}">${signed(g.a.net)}</span></div>`).join('')}</div>` : '';
   return `<div class="compare-panel">
     <div class="cp-title ${meta.cls}"><span class="cp-dot"></span>${meta.icon} ${meta.label}</div>
-    ${stats}
+    ${stats}${grupos}
   </div>`;
 }
 
@@ -1803,7 +1995,7 @@ function dayModalContent(day) {
     return `<tr>
       <td class="c-${meta.cls}" style="font-size:11px;font-weight:800">${meta.short}</td>
       <td style="color:var(--t2);font-size:11px">${esc(b.event)}</td>
-      <td>${esc(cleanMkt(b.market))}${tag}${aumTag(b)}</td>
+      <td>${esc(cleanMkt(b.market))}${tag}${aumTag(b)}${grupoOf(b) ? `<span class="boost-tag tag-grupo" title="Grupo do tipster">${esc(grupoOf(b))}</span>` : ''}</td>
       <td class="num">${b.total}</td>
       <td class="num">R$${fmt(b.stake)}</td>
       <td class="num">R$${fmt(b.win)}</td>
@@ -1924,12 +2116,12 @@ async function clearHistory() {
 }
 
 // ── EXPORT ────────────────────────────────────────────────────────────────────
-const EXP_HEAD = ['Data','Mês','Vertente','Evento','Boost','Overall Total','Overall Users','Total Stake',
+const EXP_HEAD = ['Data','Mês','Vertente','Grupo Tipster','Evento','Boost','Overall Total','Overall Users','Total Stake',
                   'Total Win','Bonus Stake','Bonus Winnings','Net','ROI%','Apostas c/ Aumento',
                   'Stake c/ Aumento','Win c/ Aumento','Custo do Aumento','Aumento Desmarcado'];
-const EXP_COLS = [12,16,14,35,55,14,14,14,14,14,14,14,10,18,18,18,18,20].map(w=>({wch:w}));
+const EXP_COLS = [12,16,14,18,35,55,14,14,14,14,14,14,14,10,18,18,18,18,20].map(w=>({wch:w}));
 const expRow = (dateStr,b) => [dateStr, monthLabel(monthKey(dateStr)||'sem-data'),
-  CATS[catOf(b)].label, b.event, b.market, b.total, b.userCount||0,
+  CATS[catOf(b)].label, catOf(b)==='tipster' ? (grupoOf(b)||'Sem grupo') : '', b.event, b.market, b.total, b.userCount||0,
   b.stake, b.win, b.bonusStake, b.bonusWin, b.net, +((b.roi||0)*100).toFixed(2),
   b.boostCount||0, b.boostStake||0, b.boostWin||0, b.boostExtra||0, desmarcada(b)?'Sim':'Não'];
 
@@ -1941,7 +2133,11 @@ function resumoSheet(linhas, campanhas) {
     out.push([lbl,a.boosts,a.apostas,a.stake,a.win,a.net,+(roi*100).toFixed(2),a.boostCount,a.boostExtra]); };
   addRow('TOTAL GERAL', linhas);
   addRow('SPORTSBOOK + TIPSTER (operação de base)', spbTip(linhas));
-  Object.entries(CATS).forEach(([k,v])=>addRow(v.label, linhas.filter(b=>catOf(b)===k)));
+  Object.entries(CATS).forEach(([k,v])=>{
+    addRow(v.label, linhas.filter(b=>catOf(b)===k));
+    // Os grupos abrem a linha do Tipster: somam o Tipster, não o Total Geral de novo.
+    if (k==='tipster') porGrupo(linhas.filter(b=>catOf(b)==='tipster')).forEach(g=>addRow('   ↳ '+g.nome, g.linhas));
+  });
   const c = campanhas;
   if (c && c.count) {
     out.push([], ['CONFERÊNCIA COM A PROVEDORA (conta por aposta turbinada, inclui VoidCashout)'],
@@ -1986,9 +2182,7 @@ function doExport(dateStr, boosts) {
 async function exportHistory() {
   const todos = await loadDays();
   if (!todos.length) { toast('Nenhum dado','err'); return; }
-  const days = periodoAtivo() ? todos.filter(d=>noPeriodo(d.date))
-             : monthFilter==='all' ? todos
-             : todos.filter(d=>(monthKey(d.date)||'sem-data')===monthFilter);
+  const days = diasDoRecorte(todos);
   if (!days.length) {
     toast(periodoAtivo()?'Nenhum dado no período selecionado':'Nenhum dado no mês selecionado','err');
     return;
@@ -2012,6 +2206,347 @@ async function exportHistory() {
   XLSX.writeFile(wb, periodoAtivo() ? 'boosts-'+periodoTag()+'.xlsx'
                    : monthFilter==='all' ? 'boosts-historico.xlsx'
                    : 'boosts-'+monthFilter+'.xlsx');
+  toast('✅ Excel exportado','ok');
+}
+
+// ── TIPSTERS POR GRUPO ────────────────────────────────────────────────────────
+// A vertente Tipster aberta por grupo. Tudo sai das linhas com catOf ===
+// 'tipster' — as mesmas que o painel Tipster do Histórico soma —, então os
+// grupos, com "Sem grupo" junto, fecham sempre com o Tipster.
+let tipGrupoSel = null;   // chave do grupo cujas linhas aparecem na tabela de baixo
+
+// O cadastro vem de `boost_tipster_grupos` (supabase/boost_tipster_grupos.sql),
+// o mesmo para todo mundo. Sem a tabela cai no localStorage deste navegador,
+// com os dois grupos de partida — a tela segue funcionando e avisa.
+async function carregarGrupos() {
+  if (supabaseClient) {
+    const { data, error } = await supabaseClient.from('boost_tipster_grupos').select('nome').order('nome');
+    if (!error) { gruposNoBanco = true; gruposCadastro = (data||[]).map(r => r.nome); return; }
+    console.warn('boost_tipster_grupos indisponível, usando a lista local:', error.message);
+  }
+  gruposNoBanco = false;
+  try {
+    const v = JSON.parse(localStorage.getItem(SK_GRUPOS) || 'null');
+    gruposCadastro = Array.isArray(v) ? v : GRUPOS_PADRAO.slice();
+  } catch { gruposCadastro = GRUPOS_PADRAO.slice(); }
+}
+function salvarGruposLocal() {
+  try { localStorage.setItem(SK_GRUPOS, JSON.stringify(gruposCadastro)); } catch { /* sem storage */ }
+}
+
+// Devolve o nome com que o grupo ficou na lista — o já existente, se a chave
+// bater — ou null se não deu para cadastrar.
+async function cadastrarGrupo(digitado) {
+  const nome = limparNomeGrupo(digitado), k = chaveGrupo(nome);
+  if (!k) return null;
+  const existente = listaGrupos().find(g => chaveGrupo(g) === k);
+  if (existente) { toast(`"${existente}" já está na lista`, 'ok'); return existente; }
+  if (gruposNoBanco) {
+    const { error } = await supabaseClient.from('boost_tipster_grupos').insert({ nome });
+    // 23505: alguém cadastrou a mesma chave agora há pouco — vale o dele.
+    if (error && error.code !== '23505') { toast('Erro ao cadastrar grupo: '+error.message, 'err'); return null; }
+    await carregarGrupos();
+    toast(`Grupo "${nome}" cadastrado`, 'ok');
+  } else {
+    gruposCadastro = [...gruposCadastro, nome];
+    salvarGruposLocal();
+    toast(`"${nome}" cadastrado só neste navegador — falta a tabela de grupos no banco`, 'err');
+  }
+  return listaGrupos().find(g => chaveGrupo(g) === k) || nome;
+}
+
+// Só sai da lista o grupo que nenhuma linha usa — nem em dia salvo, nem no
+// arquivo aberto no Importar. Serve para desfazer nome digitado errado: um
+// grupo com histórico voltaria para a lista pelos próprios dias salvos.
+async function removerGrupo(nome) {
+  const k = chaveGrupo(nome);
+  cachedDays = await loadDays();
+  const usa = b => catManual(b)==='tipster' && chaveGrupo(b.grupo) === k;
+  const uso = cachedDays.reduce((n,d) => n + (d.boosts||[]).filter(usa).length, 0) + parsedBoosts.filter(usa).length;
+  if (uso) {
+    toast(`"${nome}" está em ${uso} linha${uso!==1?'s':''} — não dá para remover`, 'err');
+    renderTipsters(false);
+    return;
+  }
+  if (!await openConfirmModal('Remover grupo', `Remover "${nome}" da lista de grupos de tipster?`, 'Remover')) return;
+  if (gruposNoBanco) {
+    const { error } = await supabaseClient.from('boost_tipster_grupos').delete().eq('nome', nome);
+    if (error) { toast('Erro ao remover grupo: '+error.message, 'err'); return; }
+    await carregarGrupos();
+  } else {
+    gruposCadastro = gruposCadastro.filter(g => chaveGrupo(g) !== k);
+    salvarGruposLocal();
+  }
+  renderTipsters(false);
+  toast(`Grupo "${nome}" removido`, 'ok');
+}
+
+// Modal de nome. Resolve com o nome cadastrado, ou null se cancelar.
+function pedirNomeGrupo() {
+  return new Promise(resolve => {
+    const modal  = document.getElementById('grupoModal');
+    const input  = document.getElementById('grupoModalInput');
+    const ok     = document.getElementById('grupoModalOk');
+    const cancel = document.getElementById('grupoModalCancel');
+    input.value = '';
+    document.getElementById('grupoModalHint').textContent = gruposNoBanco
+      ? 'Fica disponível para todo mundo que usa o Controle de Boost. Caixa e acento não criam grupo novo: "tropa" é o mesmo que "Tropa".'
+      : 'A tabela de grupos ainda não existe no banco: o grupo fica só neste navegador até alguém rodar supabase/boost_tipster_grupos.sql.';
+
+    const fechar = valor => {
+      modal.classList.remove('show');
+      ok.onclick = cancel.onclick = modal.onclick = input.onkeydown = null;
+      resolve(valor);
+    };
+    const confirmar = async () => {
+      if (!limparNomeGrupo(input.value)) { input.focus(); return; }
+      ok.disabled = true;
+      const nome = await cadastrarGrupo(input.value);
+      ok.disabled = false;
+      if (nome) fechar(nome);
+    };
+    ok.onclick     = confirmar;
+    cancel.onclick = () => fechar(null);
+    modal.onclick  = e => { if (e.target.id === 'grupoModal') fechar(null); };
+    input.onkeydown = e => {
+      if (e.key === 'Enter')  confirmar();
+      if (e.key === 'Escape') fechar(null);
+    };
+    modal.classList.add('show');
+    setTimeout(() => input.focus(), 50);
+  });
+}
+async function novoGrupo() {
+  if (!await pedirNomeGrupo()) return;
+  if (document.getElementById('page-tipsters').classList.contains('active')) renderTipsters(false);
+  if (parsedBoosts.length) renderTable();
+}
+
+// As linhas Tipster do recorte, cada uma com o dia de onde veio.
+const linhasTipster = days => days.flatMap(d =>
+  (d.boosts||[]).filter(b => catOf(b)==='tipster').map(b => ({ ...b, _dia:d.date })));
+const diasDe   = linhas => new Set(linhas.map(b => b._dia)).size;
+const roiBadge = a => {
+  const r = a.stake ? a.net/a.stake : 0;
+  return `<span class="roi ${r>=0?'roi-pos':'roi-neg'}">${(r>=0?'+':'')+(r*100).toFixed(1)}%</span>`;
+};
+
+async function renderTipsters(reload = true) {
+  if (reload || !cachedDays) {
+    const [dias] = await Promise.all([loadDays(), carregarGrupos()]);
+    cachedDays = dias;
+  }
+  const days    = cachedDays;
+  const cards   = document.getElementById('tipCards');
+  const mPills  = document.getElementById('tipMonthPills');
+  const meta    = document.getElementById('tipMeta');
+  const content = document.getElementById('tipContent');
+  sincronizarPeriodo();
+
+  const months = groupByMonth(days);
+  if (periodoAtivo()) monthFilter = 'all';
+  if (monthFilter !== 'all' && !months.some(m=>m.key===monthFilter)) monthFilter = 'all';
+  mPills.classList.toggle('dim', periodoAtivo());
+  mPills.innerHTML = days.length ? pillsDeMes(months) : '';
+  document.getElementById('btnExportTip').textContent = rotuloExportar();
+
+  const shownDays = diasDoRecorte(days);
+  const linhas = linhasTipster(shownDays);
+  const grupos = porGrupo(linhas);
+  const tot    = aggCat(linhas);
+  const nGrp   = grupos.filter(g => !g.semGrupo).length;
+
+  meta.innerHTML = !days.length ? '' :
+    `<div class="m-item">🗓 ${recorteLabel(months)}</div>`+
+    `<div class="m-item">📅 <strong>${shownDays.length}</strong> dia${shownDays.length!==1?'s':''} registrado${shownDays.length!==1?'s':''}</div>`+
+    `<div class="m-item">🎯 <strong>${nGrp}</strong> grupo${nGrp!==1?'s':''} com linhas</div>`+
+    `<div class="m-item">💰 Stake Tipster: <strong>R$${fmt(tot.stake)}</strong></div>`;
+
+  const gestao = secGrupos(days);
+  if (!linhas.length) {
+    cards.innerHTML = '';
+    const [ic, tit, txt] = !days.length
+      ? ['📭', 'Nenhum dia salvo', 'Importe um export, marque as linhas Tipster e escolha o grupo de cada uma.']
+      : ['🎯', 'Nenhuma linha Tipster no recorte', 'Troque o mês ou o período, ou marque linhas como Tipster no Importar.'];
+    content.innerHTML = `<div class="empty"><div class="e-icon">${ic}</div><h3>${tit}</h3><p>${txt}</p></div>`+gestao;
+    return;
+  }
+
+  cards.innerHTML = sumPanel('tipster', '🎯 Tipster', tot, 'soma dos grupos')+
+    grupos.map(g => sumPanel(g.semGrupo ? 'sem-grupo' : 'grupo', esc(g.nome), g.a,
+                             g.semGrupo ? 'falta escolher o grupo' : '')).join('');
+
+  if (!grupos.some(g => g.chave === tipGrupoSel)) tipGrupoSel = grupos[0].chave;
+  content.innerHTML = secRanking(grupos, linhas, tot) + secMesAMes(linhas, grupos) +
+                      secLinhasGrupo(grupos) + gestao;
+}
+
+function secRanking(grupos, linhas, tot) {
+  const linha = g => `<tr class="tip-row ${g.chave===tipGrupoSel?'sel':''}" data-grupo-sel="${escAttr(g.chave)}" tabindex="0">
+      <td class="${g.semGrupo?'cp-grp-sem':'bold'}">${esc(g.nome)}</td>
+      <td class="num">${diasDe(g.linhas)}</td>
+      <td class="num">${g.a.boosts.toLocaleString('pt-BR')}</td>
+      <td class="num">${g.a.apostas.toLocaleString('pt-BR')}</td>
+      <td class="num">R$${fmt(g.a.stake)}</td>
+      <td class="num">${tot.stake ? pctNum(g.a.stake/tot.stake*100) : '—'}</td>
+      <td class="num">R$${fmt(g.a.win)}</td>
+      <td class="num ${g.a.net>=0?'green':'red'} bold">${signed(g.a.net)}</td>
+      <td class="num">${roiBadge(g.a)}</td>
+    </tr>`;
+  return `<div class="tip-sec">
+    <div class="tip-sec-head"><h3>Resultado por grupo</h3><span class="tip-sub">clique num grupo para ver as linhas dele</span></div>
+    <div class="inner-table-wrap"><table class="inner-table">
+      <thead><tr><th>Grupo</th><th class="num">Dias c/ linha</th><th class="num">Boosts</th><th class="num">Apostas</th>
+        <th class="num">Stake</th><th class="num">% do stake</th><th class="num">Win</th><th class="num">Net</th><th class="num">ROI</th></tr></thead>
+      <tbody>${grupos.map(linha).join('')}</tbody>
+      <tfoot><tr>
+        <td>🎯 Total Tipster</td><td class="num">${diasDe(linhas)}</td>
+        <td class="num">${tot.boosts.toLocaleString('pt-BR')}</td><td class="num">${tot.apostas.toLocaleString('pt-BR')}</td>
+        <td class="num">R$${fmt(tot.stake)}</td><td class="num">${tot.stake ? pctNum(100) : '—'}</td>
+        <td class="num">R$${fmt(tot.win)}</td><td class="num ${tot.net>=0?'green':'red'}">${signed(tot.net)}</td>
+        <td class="num">${roiBadge(tot)}</td>
+      </tr></tfoot>
+    </table></div>
+  </div>`;
+}
+
+// Net de cada grupo mês a mês. Só aparece com dois meses ou mais no recorte —
+// com um só, repetiria a tabela de cima.
+function secMesAMes(linhas, grupos) {
+  const mesDe  = b => monthKey(b._dia) || 'sem-data';
+  const chaves = [...new Set(linhas.map(mesDe))].sort().reverse();
+  if (chaves.length < 2) return '';
+  const cel = arr => {
+    if (!arr.length) return `<td class="num" style="color:var(--t3)">—</td>`;
+    const net = aggCat(arr).net;
+    return `<td class="num ${net>=0?'green':'red'}">${signed(net)}</td>`;
+  };
+  const corpo = chaves.map(k => {
+    const doMes = linhas.filter(b => mesDe(b) === k);
+    const net = aggCat(doMes).net;
+    return `<tr><td class="bold" style="white-space:nowrap">${esc(monthLabel(k))}</td>`+
+      grupos.map(g => cel(doMes.filter(b => chaveGrupo(b.grupo) === g.chave))).join('')+
+      `<td class="num bold ${net>=0?'green':'red'}">${signed(net)}</td></tr>`;
+  }).join('');
+  return `<div class="tip-sec">
+    <div class="tip-sec-head"><h3>Net mês a mês</h3><span class="tip-sub">${chaves.length} meses no recorte</span></div>
+    <div class="inner-table-wrap"><table class="inner-table">
+      <thead><tr><th>Mês</th>${grupos.map(g => `<th class="num">${esc(g.nome)}</th>`).join('')}<th class="num">Total Tipster</th></tr></thead>
+      <tbody>${corpo}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function secLinhasGrupo(grupos) {
+  const g = grupos.find(x => x.chave === tipGrupoSel) || grupos[0];
+  const ordem = g.linhas.slice().sort((a,b) => dayKey(b._dia).localeCompare(dayKey(a._dia)) || b.stake - a.stake);
+  const pills = grupos.map(x => `<span class="month-pill ${x.chave===g.chave?'active':''}" data-grupo-sel="${escAttr(x.chave)}"`+
+    ` tabindex="0" role="button">${esc(x.nome)}<em>${x.a.boosts}</em></span>`).join('');
+  const corpo = ordem.map(b => `<tr>
+      <td style="white-space:nowrap">${esc(b._dia)}</td>
+      <td style="color:var(--t2);font-size:11px">${esc(b.event)}</td>
+      <td>${esc(cleanMkt(b.market))}${boostTag(b.market)}</td>
+      <td class="num">${(+b.total||0).toLocaleString('pt-BR')}</td>
+      <td class="num">R$${fmt(b.stake)}</td>
+      <td class="num">R$${fmt(b.win)}</td>
+      <td class="num ${b.net>=0?'green':'red'} bold">${signed(b.net)}</td>
+      <td class="num">${roiBadge(b)}</td>
+    </tr>`).join('');
+  return `<div class="tip-sec">
+    <div class="tip-sec-head"><h3>Linhas — ${esc(g.nome)}</h3><span class="tip-sub">${g.linhas.length} linha${g.linhas.length!==1?'s':''} no recorte</span></div>
+    <div class="pill-row">${pills}</div>
+    ${g.semGrupo ? `<div class="hidden-note show" style="margin:0 0 12px">Linhas marcadas como Tipster sem grupo. Para corrigir,
+      abra o dia no <strong>Histórico</strong> → ✎ Editar, escolha o grupo de cada linha e salve o dia de novo.</div>` : ''}
+    <div class="inner-table-wrap"><table class="inner-table">
+      <thead><tr><th>Data</th><th>Evento</th><th>Boost</th><th class="num">Apostas</th><th class="num">Stake</th>
+        <th class="num">Win</th><th class="num">Net</th><th class="num">ROI</th></tr></thead>
+      <tbody>${corpo}</tbody>
+    </table></div>
+  </div>`;
+}
+
+// A lista de grupos, com quantas linhas salvas cada um tem em TODO o histórico
+// (não só no recorte) — é esse número que decide se dá para remover.
+function secGrupos(days) {
+  const uso = new Map();
+  days.forEach(d => (d.boosts||[]).forEach(b => {
+    const k = catManual(b)==='tipster' ? chaveGrupo(b.grupo) : '';
+    if (k) uso.set(k, (uso.get(k)||0) + 1);
+  }));
+  const cadastrados = new Set(gruposCadastro.map(chaveGrupo));
+  const itens = listaGrupos().map(nome => {
+    const k = chaveGrupo(nome), n = uso.get(k) || 0;
+    return `<span class="grp-item">${esc(nome)}`+
+      `<span class="grp-uso">${n ? n.toLocaleString('pt-BR')+' linha'+(n!==1?'s':'') : 'sem uso'}</span>`+
+      (!n && cadastrados.has(k) ? `<button class="grp-del" type="button" data-grupo="${escAttr(nome)}" title="Remover da lista" aria-label="Remover ${escAttr(nome)}">✕</button>` : '')+
+      `</span>`;
+  }).join('');
+  return `<div class="tip-sec">
+    <div class="tip-sec-head"><h3>Grupos cadastrados</h3>
+      <span class="tip-sub">aparecem na caixa de grupo das linhas Tipster no Importar · só sai da lista grupo sem linha salva</span></div>
+    <div class="grp-list">${itens || '<span class="tip-sub">Nenhum grupo cadastrado.</span>'}
+      <button class="btn btn-ghost btn-sm" type="button" onclick="novoGrupo()">＋ Novo grupo</button></div>
+    ${gruposNoBanco ? '' : `<div class="hidden-note show" style="margin:12px 0 0">A tabela <strong>boost_tipster_grupos</strong>
+      não está no banco: grupo novo fica só neste navegador até rodar <strong>supabase/boost_tipster_grupos.sql</strong>.
+      Grupos já usados em dias salvos aparecem para todos mesmo assim.</div>`}
+  </div>`;
+}
+
+// Delegação: nome e chave de grupo são texto livre, então não vão para handler inline.
+const tipContent = document.getElementById('tipContent');
+const escolherGrupo = alvo => { tipGrupoSel = alvo.dataset.grupoSel; renderTipsters(false); };
+tipContent.addEventListener('click', e => {
+  const del = e.target.closest('.grp-del');
+  if (del) { removerGrupo(del.dataset.grupo); return; }
+  const sel = e.target.closest('[data-grupo-sel]');
+  if (sel) escolherGrupo(sel);
+});
+tipContent.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const sel = e.target.closest('[data-grupo-sel]');
+  if (sel) { e.preventDefault(); escolherGrupo(sel); }
+});
+
+// Três abas: resumo por grupo, net mês a mês e as linhas com o grupo de cada uma.
+function exportTipsters() {
+  const days   = diasDoRecorte(cachedDays || []);
+  const linhas = linhasTipster(days);
+  if (!linhas.length) { toast('Nenhuma linha Tipster no recorte','err'); return; }
+  const grupos = porGrupo(linhas), tot = aggCat(linhas);
+  const nome   = new Map(grupos.map(g => [g.chave, g.nome]));
+  const pct    = r => +(r*100).toFixed(2);
+
+  const res = [['TIPSTER POR GRUPO — os grupos somam o Tipster'],
+               ['Grupo','Dias c/ linha','Boosts','Apostas','Stake','% do Stake Tipster','Win','Net','ROI%']];
+  const add = (lbl, arr, a) => res.push([lbl, diasDe(arr), a.boosts, a.apostas, a.stake,
+    tot.stake ? pct(a.stake/tot.stake) : 0, a.win, a.net, pct(a.stake ? a.net/a.stake : 0)]);
+  grupos.forEach(g => add(g.nome, g.linhas, g.a));
+  add('TOTAL TIPSTER', linhas, tot);
+  const wsR = XLSX.utils.aoa_to_sheet(res);
+  wsR['!cols'] = [28,14,10,12,14,18,14,14,10].map(w=>({wch:w}));
+
+  const mesDe = b => monthKey(b._dia) || 'sem-data';
+  const men = [['Mês', ...grupos.map(g => 'Net '+g.nome), 'Net Tipster']];
+  [...new Set(linhas.map(mesDe))].sort().forEach(k => {
+    const doMes = linhas.filter(b => mesDe(b) === k);
+    men.push([monthLabel(k), ...grupos.map(g => aggCat(doMes.filter(b => chaveGrupo(b.grupo) === g.chave)).net),
+              aggCat(doMes).net]);
+  });
+  const wsM = XLSX.utils.aoa_to_sheet(men);
+  wsM['!cols'] = [20, ...grupos.map(() => 18), 16].map(w=>({wch:w}));
+
+  const lin = [['Data','Mês','Grupo','Evento','Boost','Apostas','Stake','Win','Net','ROI%']];
+  linhas.slice().sort((a,b) => dayKey(b._dia).localeCompare(dayKey(a._dia)))
+    .forEach(b => lin.push([b._dia, monthLabel(mesDe(b)), nome.get(chaveGrupo(b.grupo)) || 'Sem grupo',
+                            b.event, b.market, b.total, b.stake, b.win, b.net, pct(b.stake ? b.net/b.stake : 0)]));
+  const wsL = XLSX.utils.aoa_to_sheet(lin);
+  wsL['!cols'] = [12,16,20,35,55,10,14,14,14,10].map(w=>({wch:w}));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsR, 'Grupos');
+  XLSX.utils.book_append_sheet(wb, wsM, 'Mês a mês');
+  XLSX.utils.book_append_sheet(wb, wsL, 'Linhas');
+  XLSX.writeFile(wb, 'tipsters-'+(periodoAtivo() ? periodoTag() : monthFilter==='all' ? 'historico' : monthFilter)+'.xlsx');
   toast('✅ Excel exportado','ok');
 }
 
@@ -2618,6 +3153,7 @@ function toast(msg,type='ok') {
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 // A página abre no Histórico (aba já marcada no HTML), no mês corrente — só
 // falta buscar os dias do banco.
+carregarGrupos();
 renderHistory();
 </script>
 </body>
