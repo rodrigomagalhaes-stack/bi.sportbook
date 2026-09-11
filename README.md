@@ -500,6 +500,31 @@ mostrou (o filtro de status vai no próprio `PATCH`). Duas pessoas com a mesma
 solicitação aberta não se atropelam: a segunda recebe o aviso, em vez de desfazer
 calada a decisão da primeira.
 
+### O bilhete impresso
+
+Quando o link colado traz o código de compartilhamento da Esportiva
+(`?shareCode=`, inclusive nos links de afiliado `go.aff.esportiva.bet`), o painel
+mostra as linhas do bilhete — jogo, horário, mercado, palpite e odd — sem abrir o
+site.
+
+O código é lido em `Storage/GetValue`, no serviço social do Altenar: é a mesma
+chamada que o site faz para abrir um link compartilhado, um GET público e sem
+login que devolve as seleções já com os nomes. Passa por `api/protegidos/bilhete`
+pelo mesmo motivo do Recomendador (o Altenar recusa o Referer de um site).
+
+Duas coisas que ele **não** é:
+
+- **não é a aposta feita** — são as seleções de quando o bilhete foi
+  compartilhado, com as odds daquele momento. Não prova que alguém apostou, nem
+  como terminou;
+- **não é API oficial** — pode mudar sem aviso. Por isso as linhas ficam guardadas
+  no bilhete (coluna `bilhete`) na primeira vez que alguém abre o painel, e o que
+  foi conferido não depende de o Altenar continuar respondendo.
+
+O código virou também trava de duplicado (`share_code`, coluna gerada a partir do
+link). O mesmo bilhete postado em dois grupos chega com links diferentes — o
+afiliado muda o `utm_source` — e a trava do link deixava os dois passarem.
+
 ### O que é status e o que é data
 
 Só três coisas são status no banco: **pendente**, **pago** e **recusado** — as
