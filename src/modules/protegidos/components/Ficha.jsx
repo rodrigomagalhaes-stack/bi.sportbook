@@ -29,6 +29,14 @@ export default function Ficha({ bilhete, copiar = false }) {
           {copiar && <BotaoCopiar link={bilhete.link_bilhete} />}
         </dd>
       </div>
+      {/* Só aparece quando existe: as contas criadas antes do campo, e os
+          bilhetes de antes do login, não têm. */}
+      {bilhete.afiliado_id && (
+        <div>
+          <dt>Id do afiliado</dt>
+          <dd>{bilhete.afiliado_id}</dd>
+        </div>
+      )}
     </dl>
   )
 }

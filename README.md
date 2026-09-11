@@ -493,7 +493,10 @@ do login de sempre. As duas falam com as mesmas tabelas
 
 Todo bilhete que chega pelo formulário nasce **pendente** e cai na caixa
 **Solicitações**. Aprovar só o move para **A pagar** — nenhum dinheiro sai ali —
-e recusar exige motivo, porque o tipster lê esse texto na lista dele.
+e recusar exige motivo, porque o tipster lê esse texto na lista dele. A ficha do
+painel mostra também o **Id do afiliado** de quem enviou: ele é pedido no
+cadastro da conta e copiado em cada solicitação, porque o BI não lê a tabela de
+contas.
 
 Aprovar e recusar só gravam se o bilhete ainda estiver na situação que a tela
 mostrou (o filtro de status vai no próprio `PATCH`). Duas pessoas com a mesma
@@ -518,8 +521,15 @@ Duas coisas que ele **não** é:
   compartilhado, com as odds daquele momento. Não prova que alguém apostou, nem
   como terminou;
 - **não é API oficial** — pode mudar sem aviso. Por isso as linhas ficam guardadas
-  no bilhete (coluna `bilhete`) na primeira vez que alguém abre o painel, e o que
-  foi conferido não depende de o Altenar continuar respondendo.
+  no bilhete (coluna `bilhete`): o formulário grava no envio, e nos bilhetes de
+  antes disso o BI grava na primeira abertura do painel. O que foi conferido não
+  depende de o Altenar continuar respondendo.
+
+As **datas dos confrontos** também saem daí. O formulário não pergunta mais
+quando são os jogos: lê o bilhete no envio e grava o dia de cada jogo no horário
+de Brasília. É a data do último jogo que libera o pagamento, e ela deixou de
+depender de alguém digitar certo. Link sem código de compartilhamento é recusado
+no envio, porque sem ele não há de onde tirar as datas.
 
 O código virou também trava de duplicado (`share_code`, coluna gerada a partir do
 link). O mesmo bilhete postado em dois grupos chega com links diferentes — o
@@ -556,7 +566,8 @@ com extrato nenhum. Dinheiro só aparece na caixa **Paga**, e vem somado do CSV.
 
 O jogo foi domingo, o cadastro entrou segunda, o pagamento saiu quinta —
 "setembro" quer dizer três coisas diferentes. O filtro da caixa **Paga** recorta
-pela **data do confronto**, a que foi preenchida no cadastro.
+pela **data do confronto**, a que sai do próprio bilhete (nos antigos, a digitada
+no cadastro).
 
 Não é a data em que alguém clicou em "pago": essa registra quando a pessoa mexeu
 no sistema, e não diz respeito à rodada que se está conferindo. Um bilhete de

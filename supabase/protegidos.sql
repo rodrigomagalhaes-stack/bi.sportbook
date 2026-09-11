@@ -90,6 +90,9 @@ $$;
 create table if not exists public.protegidos_contas (
   id          uuid primary key default gen_random_uuid(),
   nome        text not null check (btrim(nome) <> ''),
+  -- O Id do afiliado, pedido no cadastro da conta. Nulo nas contas criadas
+  -- antes de o campo existir.
+  afiliado_id text,
   email       text not null check (position('@' in email) > 1),
   email_chave text generated always as (lower(btrim(email))) stored,
   -- `scrypt$sal$hash`, gerado em api/_sessao.js do formulário. Nunca a senha.
@@ -109,6 +112,26 @@ create unique index if not exists protegidos_contas_email_uk
 -- pessoas chamadas João podem ter conta. A coluna da chave sai junto.
 drop index if exists public.protegidos_contas_nome_uk;
 alter table public.protegidos_contas drop column if exists nome_chave;
+
+-- Uma versão que nunca foi ao ar chamava o Id do afiliado de `smartico_id`. Se
+-- ela chegou a rodar nesta base, a coluna é renomeada — com o que tiver dentro —
+-- em vez de ficar uma de cada nome. Numa base que ainda não tem a tabela de
+-- bilhetes, a volta dela é só pulada.
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['protegidos_contas', 'protegidos_bilhetes'] loop
+    if exists (select 1 from information_schema.columns
+               where table_schema = 'public' and table_name = t and column_name = 'smartico_id')
+       and not exists (select 1 from information_schema.columns
+               where table_schema = 'public' and table_name = t and column_name = 'afiliado_id') then
+      execute format('alter table public.%I rename column smartico_id to afiliado_id', t);
+    end if;
+  end loop;
+end $$;
+
+alter table public.protegidos_contas add column if not exists afiliado_id text;
 
 -- A trava de tentativas, numa instrução só.
 --
@@ -186,11 +209,17 @@ create table if not exists public.protegidos_bilhetes (
     substring(link_bilhete from '(?i)[?&]sharecode=([A-Za-z0-9_-]{1,64})')
   ) stored,
   -- As linhas do bilhete (jogo, mercado, palpite, odd), lidas no Altenar pelo
-  -- código e guardadas na primeira vez que alguém abre o painel no BI. A
-  -- leitura é de uma API não oficial, e o que foi conferido não pode depender
-  -- de ela continuar respondendo. Formato: server/protegidos/bilhete.js.
+  -- código. O formulário grava no envio; nos bilhetes de antes disso, o BI
+  -- grava na primeira vez que alguém abre o painel. A leitura é de uma API não
+  -- oficial, e o que foi conferido não pode depender de ela continuar
+  -- respondendo. Formato: server/protegidos/bilhete.js.
   bilhete      jsonb,
 
+  -- As datas saem do próprio bilhete: o formulário lê as seleções no Altenar e
+  -- tira o dia de cada jogo, no horário de Brasília. Ninguém digita a data que
+  -- decide quando o bilhete pode ser pago (os bilhetes de antes disso têm as
+  -- datas digitadas).
+  --
   -- Um bilhete pode ter jogos em dias diferentes. Guardar as datas todas é o
   -- que a tela mostra; `confronto_fim` é o que o sistema usa, e vem do gatilho
   -- da seção 4 — é a data do ÚLTIMO jogo, porque é ela que decide a partir de
@@ -201,6 +230,9 @@ create table if not exists public.protegidos_bilhetes (
   observacao   text,
   enviado_em   timestamptz not null default now(),
   enviado_por  text,             -- o e-mail da conta que enviou
+  -- O Id do afiliado da conta que enviou, copiado no envio pelo mesmo motivo do
+  -- e-mail: o BI não lê `protegidos_contas`.
+  afiliado_id  text,
   -- Nulo nos bilhetes de antes do login, que não têm dono. Sem cascata: apagar
   -- uma conta não pode levar junto bilhete que já virou pagamento.
   conta_id     uuid references public.protegidos_contas(id),
@@ -276,7 +308,8 @@ alter table public.protegidos_bilhetes
   add column if not exists aprovado_em  timestamptz,
   add column if not exists aprovado_por text,
   add column if not exists recusado_em  timestamptz,
-  add column if not exists recusado_por text;
+  add column if not exists recusado_por text,
+  add column if not exists afiliado_id  text;
 
 alter table public.protegidos_bilhetes
   drop constraint if exists protegidos_bilhetes_status_check;
@@ -551,12 +584,13 @@ group by share_code
 having count(*) > 1;
 
 -- As colunas que a versão nova precisa ter: `tipster_chave`, `conta_id`,
--- `aprovado_em`, `recusado_em`, `share_code` e `bilhete` presentes, e
--- `tipster_id` ausente.
+-- `aprovado_em`, `recusado_em`, `share_code`, `bilhete` e `afiliado_id`
+-- presentes, e `tipster_id` ausente.
 select column_name, is_generated
 from information_schema.columns
 where table_schema = 'public'
   and table_name = 'protegidos_bilhetes'
   and column_name in ('tipster_nome', 'tipster_chave', 'tipster_id', 'link_chave',
-                      'conta_id', 'aprovado_em', 'recusado_em', 'share_code', 'bilhete')
+                      'conta_id', 'aprovado_em', 'recusado_em', 'share_code', 'bilhete',
+                      'afiliado_id')
 order by column_name;
