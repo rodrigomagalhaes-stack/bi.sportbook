@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import BilheteLinhas from './BilheteLinhas.jsx'
 import Ficha from './Ficha.jsx'
 import { aprovar, recusar } from '../lib/dados.js'
 import { diaDoTimestamp, formatarDia } from '../lib/situacao.js'
@@ -51,6 +52,8 @@ export default function PainelAnalise({ bilhete, aoFechar, aoConcluir }) {
           </p>
 
           {bilhete.observacao && <p className="pf-hint">{bilhete.observacao}</p>}
+
+          <BilheteLinhas bilhete={bilhete} />
 
           {recusando && (
             <div className="pr-recusa">

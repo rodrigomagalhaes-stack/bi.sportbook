@@ -47,6 +47,26 @@ export function buscarJogadores(bilheteId, termo = '', limite = 200) {
   )
 }
 
+/** As linhas de um bilhete compartilhado, pelo código do link. */
+export async function buscarLinhas(codigo) {
+  const res = await fetch(`/api/protegidos/bilhete?codigo=${encodeURIComponent(codigo)}`)
+  const dados = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(dados.erro || `erro ${res.status} ao ler o bilhete`)
+  return dados
+}
+
+/**
+ * Guarda as linhas lidas no próprio bilhete.
+ *
+ * Só onde ainda não há nada guardado (`bilhete=is.null`): a primeira leitura é
+ * a que vale, e duas pessoas abrindo o mesmo painel não trocam uma pela outra.
+ */
+export const salvarLinhas = (id, bilhete) =>
+  rest(`protegidos_bilhetes?id=eq.${encodeURIComponent(id)}&bilhete=is.null`, {
+    method: 'PATCH',
+    body: { bilhete },
+  })
+
 /** O cruzamento de IDs no período, agregado pelo banco. */
 export const buscarIdsRepetidos = (de, ate) =>
   rest('rpc/protegidos_ids_repetidos', { method: 'POST', body: { de, ate } })

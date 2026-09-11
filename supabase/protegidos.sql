@@ -84,22 +84,12 @@ $$;
 -- com conta no Auth leria o BI inteiro. Esta tabela só é lida pelas funções do
 -- formulário, com a chave de serviço.
 --
--- O NOME É ÚNICO. O cadastro é livre, e o nome da conta vira `tipster_nome` em
--- cada bilhete — é por ele que o BI agrupa. Sem a trava, qualquer um criaria a
--- conta "Rodrigo" e os bilhetes dela cairiam somados com os do Rodrigo de
--- verdade. A chave é a mesma fórmula de `tipster_chave`, para "João" e "joao"
--- colidirem aqui exatamente como se juntam lá.
+-- O `nome` é de quem entra, não do tipster: uma conta pode mandar bilhetes de
+-- mais de um tipster, e o nome dele é digitado em cada solicitação.
 
 create table if not exists public.protegidos_contas (
   id          uuid primary key default gen_random_uuid(),
   nome        text not null check (btrim(nome) <> ''),
-  nome_chave  text generated always as (
-    translate(
-      lower(btrim(regexp_replace(nome, '\s+', ' ', 'g'))),
-      'áàâãäéèêëíìîïóòôõöúùûüçñ',
-      'aaaaaeeeeiiiiooooouuuucn'
-    )
-  ) stored,
   email       text not null check (position('@' in email) > 1),
   email_chave text generated always as (lower(btrim(email))) stored,
   -- `scrypt$sal$hash`, gerado em api/_sessao.js do formulário. Nunca a senha.
@@ -114,8 +104,11 @@ create table if not exists public.protegidos_contas (
 
 create unique index if not exists protegidos_contas_email_uk
   on public.protegidos_contas (email_chave);
-create unique index if not exists protegidos_contas_nome_uk
-  on public.protegidos_contas (nome_chave);
+-- A versão anterior travava o nome da conta como único, quando ele ainda virava
+-- o nome do tipster em cada bilhete. Deixou de virar, e a trava sai: duas
+-- pessoas chamadas João podem ter conta. A coluna da chave sai junto.
+drop index if exists public.protegidos_contas_nome_uk;
+alter table public.protegidos_contas drop column if exists nome_chave;
 
 -- A trava de tentativas, numa instrução só.
 --
@@ -162,8 +155,8 @@ create table if not exists public.protegidos_bilhetes (
   id           uuid primary key default gen_random_uuid(),
 
   -- ── o que vem do formulário ───────────────────────────────────────────────
-  -- O nome do tipster vem copiado da conta — e, nos bilhetes de antes do login,
-  -- foi digitado a cada cadastro. `tipster_chave` é o agrupamento: sem ela,
+  -- O nome do tipster é digitado a cada solicitação — quem entra com uma conta
+  -- pode mandar bilhetes de mais de um. `tipster_chave` é o agrupamento: sem ela,
   -- "Rodrigo", "rodrigo" e "Rodrigo " seriam três tipsters em toda soma e todo
   -- filtro — e depois de gravados não haveria como saber que eram o mesmo.
   --
@@ -184,6 +177,19 @@ create table if not exists public.protegidos_bilhetes (
   stake        numeric(12,2) not null check (stake > 0),
   link_bilhete text not null check (btrim(link_bilhete) <> ''),
   link_chave   text generated always as (public.protegidos_link_chave(link_bilhete)) stored,
+
+  -- O código de compartilhamento da Esportiva (`?shareCode=`), tirado do link.
+  -- É ele que identifica o bilhete: o mesmo bilhete postado em dois grupos
+  -- chega com links diferentes (o afiliado muda o `utm_source`), e só o código
+  -- é igual nos dois. O `(?i)` é porque nada garante a caixa do parâmetro.
+  share_code   text generated always as (
+    substring(link_bilhete from '(?i)[?&]sharecode=([A-Za-z0-9_-]{1,64})')
+  ) stored,
+  -- As linhas do bilhete (jogo, mercado, palpite, odd), lidas no Altenar pelo
+  -- código e guardadas na primeira vez que alguém abre o painel no BI. A
+  -- leitura é de uma API não oficial, e o que foi conferido não pode depender
+  -- de ela continuar respondendo. Formato: server/protegidos/bilhete.js.
+  bilhete      jsonb,
 
   -- Um bilhete pode ter jogos em dias diferentes. Guardar as datas todas é o
   -- que a tela mostra; `confronto_fim` é o que o sistema usa, e vem do gatilho
@@ -280,6 +286,14 @@ alter table public.protegidos_bilhetes
 alter table public.protegidos_bilhetes
   alter column status set default 'pendente';
 
+-- O bilhete impresso. `share_code` é a primeira versão da fórmula; se um dia
+-- ela mudar, esta linha vira derruba-e-refaz, como `tipster_chave` acima.
+alter table public.protegidos_bilhetes
+  add column if not exists share_code text generated always as (
+    substring(link_bilhete from '(?i)[?&]sharecode=([A-Za-z0-9_-]{1,64})')
+  ) stored,
+  add column if not exists bilhete jsonb;
+
 
 -- 4. O gatilho das datas, e os índices ───────────────────────────────────────
 -- `confronto_fim` seria uma coluna gerada se desse: coluna gerada exige função
@@ -321,6 +335,29 @@ create index if not exists protegidos_bilhetes_tipster_ix
 -- "Minhas solicitações": os bilhetes de uma conta, do mais recente para trás.
 create index if not exists protegidos_bilhetes_conta_ix
   on public.protegidos_bilhetes (conta_id, enviado_em desc);
+
+-- A trava do duplicado pelo código, ignorando os recusados como a do link.
+--
+-- Numa base que JÁ tenha dois bilhetes vivos com o mesmo código, o índice não
+-- consegue nascer — e o erro abortaria o resto deste arquivo. O bloco confere
+-- antes: havendo repetido, avisa e segue sem a trava. A penúltima consulta do
+-- arquivo lista quais são; resolvidos (um deles recusado), é rodar de novo.
+do $$
+begin
+  if exists (
+    select 1
+    from public.protegidos_bilhetes
+    where share_code is not null and status <> 'recusado'
+    group by share_code
+    having count(*) > 1
+  ) then
+    raise notice 'protegidos_bilhetes_share_code_uk NÃO foi criado: há bilhetes com o mesmo código. Veja a penúltima consulta.';
+  else
+    create unique index if not exists protegidos_bilhetes_share_code_uk
+      on public.protegidos_bilhetes (share_code)
+      where share_code is not null and status <> 'recusado';
+  end if;
+end $$;
 
 
 -- 5. As bases pagas ──────────────────────────────────────────────────────────
@@ -505,12 +542,21 @@ where n.nspname = 'public'
                     'protegidos_contas')
 order by c.relname;
 
+-- Bilhetes vivos com o mesmo código de compartilhamento. Esperado: nenhuma
+-- linha. Se aparecer alguma, a trava do código não foi criada (ver seção 4).
+select share_code, count(*) as bilhetes, string_agg(tipster_nome, ', ') as tipsters
+from public.protegidos_bilhetes
+where share_code is not null and status <> 'recusado'
+group by share_code
+having count(*) > 1;
+
 -- As colunas que a versão nova precisa ter: `tipster_chave`, `conta_id`,
--- `aprovado_em` e `recusado_em` presentes, e `tipster_id` ausente.
+-- `aprovado_em`, `recusado_em`, `share_code` e `bilhete` presentes, e
+-- `tipster_id` ausente.
 select column_name, is_generated
 from information_schema.columns
 where table_schema = 'public'
   and table_name = 'protegidos_bilhetes'
   and column_name in ('tipster_nome', 'tipster_chave', 'tipster_id', 'link_chave',
-                      'conta_id', 'aprovado_em', 'recusado_em')
+                      'conta_id', 'aprovado_em', 'recusado_em', 'share_code', 'bilhete')
 order by column_name;

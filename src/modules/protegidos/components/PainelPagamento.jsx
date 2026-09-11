@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import AreaUpload from '../../../shell/AreaUpload.jsx'
 import Resumo from '../../../shell/Resumo.jsx'
 import ListaJogadores from './ListaJogadores.jsx'
+import BilheteLinhas from './BilheteLinhas.jsx'
 import Ficha from './Ficha.jsx'
 import { lerArquivo, letraColuna, pareceCabecalho } from '../../../lib/planilha.js'
 import { acharColunaUsuario, montarLinhas, valorDaBase } from '../lib/base.js'
@@ -132,6 +133,8 @@ export default function PainelPagamento({ bilhete, hoje, aoFechar, aoConcluir, a
           <Ficha bilhete={bilhete} copiar={!pago} />
 
           {bilhete.observacao && <p className="pf-hint">{bilhete.observacao}</p>}
+
+          <BilheteLinhas bilhete={bilhete} />
 
           {pago ? (
             /* ── já pago: o que foi pago, e o caminho de volta ─────────────── */
